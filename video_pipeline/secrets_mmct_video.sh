@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Set the environment variables
+export BLOB_CONNECTION_STRING=""
+export BLOB_CONTAINER_NAME=""
+export BLOB_SAS_TOKEN=""
+export AZURECV_ENDPOINT=""
+export AZURECV_SUBSCRIPTION_KEY=""
+export AZURE_OPENAI_ENDPOINT=""
+export AZURE_OPENAI_KEY=""
+export GPT4_32K_DEPLOYMENT=""
+export GPT4_V_DEPLOYMENT=""
+export ADA_EMBEDDING_DEPLOYMENT=""

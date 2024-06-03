@@ -1,0 +1,9 @@
+requests
+opencv-python
+pysrt
+Pillow
+tqdm
+openai
+scipy
+azure-storage-blob
+azure-core

@@ -1,0 +1,4 @@
+data/nlvr/nlvr2/train_data/*
+data/nlvr/nlvr2/train_data1/*
+models/VIT/*.pth
+.env
