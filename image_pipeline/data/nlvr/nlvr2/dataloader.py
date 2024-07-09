@@ -77,14 +77,3 @@ class NLVR2Dataset(Dataset):
         return sample
 
 
-
-    
-
-
-if __name__ == "__main__":
-    nlvr_single = NLVR2Dataset("~/COT_HRL_VQA/data/nlvr/nlvr2/data/test2.json", "~/nlvr", "test2")
-    # for single in nlvr_single:
-    #     print(single)
-    # dataloader = DataLoader(nlvr_single, batch_size=1,
-    #                     shuffle=True, num_workers=1)
-    # print(next(iter(dataloader)))

@@ -12,16 +12,21 @@ class React:
         if credentials is not None:
             for [api_key, api_base, api_type, api_version], model_n, engine_n in zip(credentials, model_name, engine_name):
                 if api_type == "azure":
-                    llm = AzureOpenAI(model=model_n, engine= engine_n or "gpt-35-turbo" ,max_retries=100, verbose=True, temperature=0, api_base=api_base, api_key=api_key, api_version=api_version, api_type=api_type)
+                    use_azure_ad = False
+                    if api_key is None:
+                        use_azure_ad = True
+                    llm = AzureOpenAI(model=model_n, engine= engine_n or "gpt-35-turbo" ,max_retries=100, verbose=True, temperature=0, azure_endpoint=api_base, api_key=api_key, use_azure_ad=use_azure_ad, api_version=api_version, api_type=api_type)
                 elif api_type == "openai":
                     llm = OpenAI(model=model_n, max_retries=100, verbose=True, temperature=0)
                 else:
                     llm = OpenAILike(model=model_n, context_window=4096,is_chat_model=True,is_function_calling_model=True, verbose=True, temperature=0)
                 self.llms.append(llm)
         else:
-            
             if llm_type== "azure":
-                llm = AzureOpenAI(model=model_name[0], engine= engine_name[0] or "gpt-35-turbo" ,max_retries=100, verbose=True, temperature=0)
+                use_azure_ad = False
+                if os.getenv("OPENAI_API_KEY") is None:
+                    use_azure_ad = True
+                llm = AzureOpenAI(model=model_name[0], engine= engine_name[0] or "gpt-35-turbo" ,use_azure_ad=use_azure_ad, max_retries=100, verbose=True, temperature=0)
             elif llm_type == "openai":
                 llm = OpenAI(model=model_name[0], max_retries=100, verbose=True, temperature=0)
             else:
@@ -61,8 +66,6 @@ if __name__ == "__main__":
     from PIL import Image
     import requests
     import time
-    os.environ["OPENAI_API_KEY"] = "None"
-    os.environ["OPENAI_API_BASE"] = "https://settled-perfectly-bedbug.ngrok-free.app/v1"
     openai.api_key = os.environ["OPENAI_API_KEY"]
     openai.api_base = os.environ["OPENAI_API_BASE"]
     models = openai.Model.list()
@@ -81,62 +84,36 @@ if __name__ == "__main__":
     blip.set_images(images)
 
     r = React([blip, add], model, True)
-#     response = r.chat("""Given the plan below:
-#     Step 1: Query the number of bottles present in the left image.
-# Plan: We will use the vit tool to count the number of bottles in the left image.
-# q: How many bottles are present in the left image?
 
-# Step 2: Query the number of bottles present in the right image.
-# Plan: We will use the vit tool to count the number of bottles in the right image.
-# q: How many bottles are present in the right image?
-
-# Step 3: Query the total number of bottles present in both images.
-# Plan: We will use the information obtained in Step 1 and Step 2 to find out the total number of bottles present in both images.
-# q: What is the total number of bottles present in the left and right images combined?
-
-# Step 4: Compare the total number of bottles with the given information.
-# Plan: We will compare the total number of bottles obtained in Step 3 with the given information that both images contain seven beer bottles.
-# q: Are there seven beer bottles present in both images combined?
-
-# Step 5: Answer the question.
-# Plan: We will use the information obtained in Step 4 to answer the question.
-# Answer: <q: Are there seven beer bottles present in both images combined?>
-# follow each step one by one and utilize the vit function and formulate the query that is given in individual steps. Always use tools and never skip using tools for any query.
-
-# Execute First step and then wait for observation
-#     """)
     response = r.chat("""Sure, I can help you with that! Here's a step-by-step plan to solve the vision language task:
 
-First, we need to query the image(s) to get information about the brand label on the bottles. We can do this by asking an expert system, such as Vit, to identify the text on the label.
-Query: What text can you read on the label of the bottles?
+    First, we need to query the image(s) to get information about the brand label on the bottles. We can do this by asking an expert system, such as Vit, to identify the text on the label.
+    Query: What text can you read on the label of the bottles?
 
-Expected response: The expert system will respond with the text on the label, such as "Brand A" or "Brand B".
+    Expected response: The expert system will respond with the text on the label, such as "Brand A" or "Brand B".
 
-Next, we need to query the image(s) to get information about the shape and size of the bottles. We can do this by asking the expert system to identify the object detection features of the bottles.
-Query: What are the shapes and sizes of the bottles?
+    Next, we need to query the image(s) to get information about the shape and size of the bottles. We can do this by asking the expert system to identify the object detection features of the bottles.
+    Query: What are the shapes and sizes of the bottles?
 
-Expected response: The expert system will respond with information about the shapes and sizes of the bottles, such as "The bottles are cylindrical with a round base and have a height of approximately 20 cm."
+    Expected response: The expert system will respond with information about the shapes and sizes of the bottles, such as "The bottles are cylindrical with a round base and have a height of approximately 20 cm."
 
-Now, we need to compare the brand label and shape/size information of each bottle to determine if they are all from the same brand. We can do this by using a logical algorithm to compare the information gathered in steps 1 and 2.
-Query: Are all the bottles from the same brand?
+    Now, we need to compare the brand label and shape/size information of each bottle to determine if they are all from the same brand. We can do this by using a logical algorithm to compare the information gathered in steps 1 and 2.
+    Query: Are all the bottles from the same brand?
 
-Expected response: The expert system will respond with a yes or no answer, depending on whether all the bottles have the same brand label and shape/size.
+    Expected response: The expert system will respond with a yes or no answer, depending on whether all the bottles have the same brand label and shape/size.
 
-If the answer is yes, then we can conclude that all the bottles are from the same brand. If the answer is no, then we need to further investigate to determine the reason for the difference in brand labels or shapes/sizes.
-Query: What could be the reason for the difference in brand labels or shapes/sizes?
+    If the answer is yes, then we can conclude that all the bottles are from the same brand. If the answer is no, then we need to further investigate to determine the reason for the difference in brand labels or shapes/sizes.
+    Query: What could be the reason for the difference in brand labels or shapes/sizes?
 
-Expected response: The expert system will respond with possible reasons, such as "The bottles may be from different production batches" or "The bottles may be counterfeit".
+    Expected response: The expert system will respond with possible reasons, such as "The bottles may be from different production batches" or "The bottles may be counterfeit".
 
-Finally, we need to generate a natural language response to answer the original question. We can do this by combining the information gathered in steps 1-4
+    Finally, we need to generate a natural language response to answer the original question. We can do this by combining the information gathered in steps 1-4
 
-follow each step one by one and utilize the vit function and formulate the query that is given in individual steps. Always use tools and never skip using tools for any query.
+    follow each step one by one and utilize the vit function and formulate the query that is given in individual steps. Always use tools and never skip using tools for any query.
 
-Execute First step and then wait for observation""")
-    
+    Execute First step and then wait for observation""")
+    print(response)    
     response = r.chat("now execute the second step and wait for observation")
     response = r.chat("now execute the third steps and answer the original question")
-    # response = r.chat("You are given two images, first run on right image and use the vit function with query: 'how many botles are there'")
-    # response = r.chat("re run on the left image by using the vit function with the same query: 'how many birds are there'")
-    # response = r.chat("what is the total number of bottles from both images")#"what is the square root of 5 times 4")
     print(response)
     

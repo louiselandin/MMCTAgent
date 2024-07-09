@@ -3,16 +3,25 @@
 To run the image pipeline one must first input all credentials into a `.env` folder.
 `.env.template` file can be taken as reference to add the credentials.
 
+### Setup
+
+To setup we provide conda environment.yml and requirements.txt, any one of the following can be utilized
+```bash
+$ conda env create --name mmct -f environment.yml
+```
+or
+```bash
+$ pip install -r requirements.txt
+```
+
 ### Scripts
 
 To Evaluate our pipeline one can change the data path and run 
 
 ```bash
-$ python main_latest.py
+$ python main_script.py
 ```
-To use Critic based MMCT, For other ablation study we have also included,
-`main_old.py` which only uses a VIT to solve the question iteratively.
-`main_cot_only_tools.py` This contains the code for React agent solve VQA query with different tools and also efficienctly select model in the same category.
+To use Critic based MMCT.
 
 ### Overview
 
@@ -44,7 +53,7 @@ A overview of the filestructre will be helpful to modify over the codebase.
 │   └── Tool_env.py
 ├── __init__.py
 ├── main_cot_only_tools.py                  ## Scripts
-├── main_latest.py                          ## Main Script
+├── main_script.py                          ## Main Script
 ├── main_old.py                             ## Scripts
 ├── models                  ## Model definition under each category
 │   ├── __init__.py
@@ -54,7 +63,6 @@ A overview of the filestructre will be helpful to modify over the codebase.
 │   │   ├── lora.py
 │   │   └── utils.py
 │   └── VIT
-│       ├── beit3_large_indomain_patch16_224_nlvr2.pth
 │       ├── beit3.py
 │       ├── beit3.spm
 │       ├── gpt4v.py

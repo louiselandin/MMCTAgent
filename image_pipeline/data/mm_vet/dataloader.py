@@ -27,7 +27,7 @@ class MMVETDataset(Dataset):
         for i in range(len(data)):
             id = f"v1_{i}"
             imagename = data[id]['imagename']
-            img_path = os.path.join(root_data_dir, imagename)
+            img_path = imagename #os.path.join(root_data_dir, imagename)
             query = data[id]['question']
             self.items.append({
                 "identifier": id,
@@ -76,14 +76,3 @@ class MMVETDataset(Dataset):
         return sample
 
 
-
-    
-
-
-if __name__ == "__main__":
-    nlvr_single = MMVETDataset("~/COT_HRL_VQA/data/mm_vet/mm-vet.json", "~/COT_HRL_VQA/data/mm_vet/images")
-    # for single in nlvr_single:
-    #     print(single)
-    # dataloader = DataLoader(nlvr_single, batch_size=1,
-    #                     shuffle=True, num_workers=1)
-    # print(next(iter(dataloader)))

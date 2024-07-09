@@ -27,7 +27,7 @@ class CriticTool(AsyncBaseTool):
             raw_input = {"args": args, "kwargs": kwargs},
             raw_output = tool_output,
         )
-    def call_as_fn(self, priority:str = "3", query:str = None, conversation:str = None):
+    def call_as_fn(self, priority:str = "3", query:str = None, conversation:str = None, **kwargs):
         if query:
             self._query = query
         if conversation:
@@ -77,8 +77,7 @@ class CriticTool(AsyncBaseTool):
                 In the above conversation you may see a critic verification make sure you assert 
                 those feedbacks and if they are rectified by the LLM.  
                 """
-
-        return self.tools[priority](self._image[self.idx], prompt)
+        return self.tools[priority](prompt, self._image[self.idx])
         
     def set_image(self, image, idx=0):
         self._image[idx] = image
@@ -111,7 +110,9 @@ class CriticTool(AsyncBaseTool):
                """
     def get_desc(self):
         return """
-                You are supposed to call this tool after you arrived to the answer of the question. 
+                You are supposed to call this tool before giving the final response to answer the question. 
+                You have to use this tool irrespecitve of if you can answer the question without a tool, do not
+                use it in between the reasoning chain only at the end. 
                 This tool will evaluate the answer and provide feedback on the answer.
                 input:
                     {}
@@ -119,8 +120,10 @@ class CriticTool(AsyncBaseTool):
                     The critic has access to all the information about the React agent and its actions.
                     It also has access to the question and the image for the query.
 
-                Your task is to call it at the end of the reasoning chain and then use the feedback to improve your action and
-                solve the query efficiently.
+                Your task is to call it before the end of the reasoning chain that is before final response, and only give the final response if all criteria 
+                in the critic is satisfied else take the feedback and continue the chain with tools and followed by critic prior to the final response,
+                You have to use the feedback to improve your action and solve the query efficiently. It is very critical to meet all criteria before giving the final response.
+                
                 response:
                     The output is simple text giving feedback and checkboxes based on evaluation criteria.
                """

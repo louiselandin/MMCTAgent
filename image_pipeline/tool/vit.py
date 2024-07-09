@@ -25,11 +25,11 @@ class VITTool(AsyncBaseTool):
             raw_input = {"args": args, "kwargs": kwargs},
             raw_output = tool_output,
         )
-    def call_as_fn(self, priority:str = "3"):
-        return self.tools[priority](self._image[self.idx])
+    def call_as_fn(self, query, priority:str = "3", **kwargs):
+        return self.tools[priority](query, self._image[self.idx])
         
-    def set_image(self, image, idx=0):
-        self._image[idx] = image
+    def set_image(self, im, idx=0):
+        self._image[idx] = im
         
     def sync_to_async(self, fn):
         """Sync to async."""

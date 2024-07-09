@@ -1,4 +1,5 @@
 from transformers import InstructBlipProcessor, InstructBlipForConditionalGeneration
+from utils.content_moderation import safe_pipeline_execute, safe_step_execute
 import torch
 from PIL import Image
 import requests
@@ -14,10 +15,20 @@ class GPT4V:
         self.api_type = api_type or os.getenv("GPT4V_OPENAI_API_TYPE")
         self.api_version = api_version or os.getenv("GPT4V_OPENAI_API_VERSION")
         self.model = model or os.getenv("GPT4V_OPENAI_API_MODEL")
+        self.deployment = os.getenv("GPT4V_OPENAI_API_DEPLOYMENT")
+        self.client = None
+        if self.api_key is None and bool(os.getenv("GPT4V_OPENAI_MANAGED_IDENTITY", False)):
+            from azure.identity import DefaultAzureCredential
+            self.api_key = DefaultAzureCredential().get_token("https://cognitiveservices.azure.com/.default").token
+            self.client = openai.AzureOpenAI(azure_endpoint=self.api_base, azure_deployment=self.deployment, azure_ad_token=self.api_key, api_version=self.api_version)
+        elif self.api_type=="azure":
+            self.client = openai.AzureOpenAI(azure_endpoint=self.api_base, azure_deployment=self.deployment, api_key=self.api_key, api_version=self.api_version)
+        else:
+            self.client = openai.OpenAI(api_key=self.api_key, api_base=self.api_base, api_type=self.api_type, api_version=self.api_version)
 
-    def convert_image(image):
+    def convert_image(self, img_pil):
         image_bytes = io.BytesIO()
-        image.save(image_bytes, format=format)
+        img_pil.save(image_bytes, format="JPEG")
         base64_image = base64.b64encode(image_bytes.getvalue()).decode("utf-8")
         return base64_image
     
@@ -42,18 +53,19 @@ class GPT4V:
             dst.paste(im2, (im1.width + padding, pad_h))
         return dst
     
-    def __call__(self, images, prompt, selected_image=None):
+    @safe_step_execute(class_func=True)
+    def __call__(self, prompt, images, selected_image=None, **kwargs):
         if isinstance(images, list):
             if selected_image.lower() == "left":
-                image = images[0]
+                im = images[0]
             elif selected_image.lower() == "right":
-                image = images[1]
+                im = images[1]
             else:
-                image = self.get_concat_h_resize(*images)
+                im = self.get_concat_h_resize(*images)
         else:
-            image = images
+            im = images
         
-        response = openai.OpenAI().chat.completions.create(
+        response = self.client.chat.completions.create(
           model=self.model,
           messages=[
             {
@@ -66,17 +78,13 @@ class GPT4V:
                 {
                   "type": "image_url",
                   "image_url": {
-                    "url": f"data:image/jpeg;base64,{self.convert_image(image)}",
+                    "url": f"data:image/jpeg;base64,{self.convert_image(im)}",
                   },
                 },
               ],
             }
           ],
           max_tokens=500,
-          api_key=self.api_key,
-          api_base=self.api_base,
-          api_type=self.api_type,
-          api_version=self.api_version
         )
         generated_text = response.choices[0].message.content
         return generated_text.strip()

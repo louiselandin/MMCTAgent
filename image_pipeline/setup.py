@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="MMCT",
+    name="mmct",
     packages=find_packages(include=["."]),
     version='0.1.0',
     description='MMCT',

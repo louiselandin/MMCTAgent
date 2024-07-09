@@ -2,6 +2,7 @@ from pipeline import React
 from rewards import HEURReward
 from copy import deepcopy
 # ToDo: Implement using Gym.Env
+from utils.content_moderation import safe_output
 from contextlib import contextmanager
 
 @contextmanager
@@ -21,7 +22,8 @@ class ReactEnv:
         # for i in range(num_llms):
         #     self.tools.append(deepcopy(tools))
         self.react = React(self.tools, *args, **kwargs)
-        
+
+    @safe_output(class_func=True)
     def step(self, action_str, tries=10, idx=0):
         original_tries = tries
         resp = ""
