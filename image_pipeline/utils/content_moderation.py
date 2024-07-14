@@ -503,6 +503,7 @@ class ContentModMMCT:
         if content_moderation_endpoint is None or content_safety_endpoint is None:
             self.exclude_content_moderation = True
             return
+        self.exclude_content_moderation = False
         self.content_moderation = ContentModeratorDEF(content_moderation_endpoint)
         creds = DefaultAzureCredential()
         token = creds.get_token("https://cognitiveservices.azure.com/.default").token

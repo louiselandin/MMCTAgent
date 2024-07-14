@@ -39,7 +39,7 @@ def process_sample(dataset, env, sample_id, idx=0):
     data = dataset[sample_id]
     
     with ParallelCapturing() as output:
-        global results
+        global results, include_guidelines
         if data["identifier"] in results.keys():
             return [f"Skipping {data['identifier']}", "\n", str(results[data["identifier"]]), "\n"]
         img = data["img1"]
@@ -57,8 +57,8 @@ def process_sample(dataset, env, sample_id, idx=0):
         else:
             try:
                 response = env.step(f"""
-                                    {META_GUIDELINES}
-                                    With above guidelines in mind, follow the instructions below:
+                                    {META_GUIDELINES if include_guidelines else ''}
+                                    {'With above guidelines in mind, follow the instructions below:' if include_guidelines else ''}
                                     
                                     your task is to solve a given question, this is a vision language task where
                                     the question requires to understand the given image. To solve the question you have
@@ -179,11 +179,13 @@ if __name__ == "__main__":
     parser.add_argument("--resume", action='store_true', help="Resume the process")
     parser.add_argument("--result-file", type=str, default="results.json", help="Results file name")
     parser.add_argument("--log-file", type=str, default="log_best.logs", help="Log file name")
+    parser.add_argument("--exclude-guidelines", action='store_true', help="Include guidelines in the prompt")
     
     args = parser.parse_args()
         
     results = {}
     log_list = []
+    include_guidelines = False if args.exclude_guidelines else True
     
     if args.resume:
         with open(args.result_file, 'r') as f:
