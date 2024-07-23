@@ -108,7 +108,6 @@ multiprocess==0.70.16
 mypy-extensions==1.0.0
 nest-asyncio==1.6.0
 networkx==3.1
-nltk==3.8.1
 numba==0.58.1
 numpy==1.24.4
 oauthlib==3.2.2
