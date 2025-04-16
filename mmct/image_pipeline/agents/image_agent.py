@@ -7,10 +7,10 @@ from autogen_agentchat.teams import SelectorGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
 from autogen_agentchat.base import TaskResult
 
-from mmct.image_pipeline.core.tools.vit import VITTool
-from mmct.image_pipeline.core.tools.recog import RECOGTool
-from mmct.image_pipeline.core.tools.object_detect import ObjectDetectTool
-from mmct.image_pipeline.core.tools.ocr import OCRTool
+from mmct.image_pipeline.core.tools.vit import vitTool
+from mmct.image_pipeline.core.tools.recog import recogTool
+from mmct.image_pipeline.core.tools.object_detect import objectDetectTool
+from mmct.image_pipeline.core.tools.ocr import ocrTool
 from mmct.image_pipeline.core.tools.critic import criticTool
 from mmct.image_pipeline.prompts import (
     get_planner_system_prompt,
@@ -22,15 +22,15 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
-class ImageQnA:
+class ImageAgent:
     """
-    ImageQnA handles image-based queries using MMCT which includes agents(planner and critic) and tools for tasks like OCR, object detection, and more.
+    ImageAgent handles image-based queries using MMCT which includes agents(planner and critic) and tools for tasks like OCR, object detection, and more.
     It can also provide response without critic agent and supports both standard and streaming responses.
 
     Parameters:
         image_path (str): Path to the image file.
         query (str): Question or prompt related to the image.
-        tools_str (str): Comma-separated tool names to use (e.g., 'QueryOCRTool,QueryVITTool,QueryObjectDetectTool,QueryRECOGTool').
+        tools_str (str): Comma-separated tool names to use (e.g., 'ocrTool,vitTool,objectDetectTool,recogTool').
         critic_flag (bool): Whether to include a critic agent for review.
         stream (bool, optional): Whether to enable streaming response. Defaults to False.
 
@@ -98,10 +98,10 @@ class ImageQnA:
 
     def _initialize_tools(self):
         tool_map = {
-            "QueryObjectDetectTool": ObjectDetectTool,
-            "QueryOCRTool": OCRTool,
-            "QueryVITTool": VITTool,
-            "QueryRECOGTool": RECOGTool,
+            "objectDetectTool": objectDetectTool,
+            "ocrTool": ocrTool,
+            "vitTool": vitTool,
+            "recogTool": recogTool,
         }
         self.tools = [tool_map[t] for t in self.tools_str.split(",") if t in tool_map]
 
@@ -172,12 +172,12 @@ if __name__ == "__main__":
     image_path = "C:/Users/v-amanpatkar/Downloads/menu.png"
     query = """I want to order House Special & Crab Curry. What will be the order amount?
     In this same order amount what are the options that I can consider."""
-    tools = "QueryVITTool,QueryObjectDetectTool"
+    tools = "vitTool,objectDetectTool"
     critic_flag = True
     stream = True
 
     async def main():
-        image_qna = ImageQnA(image_path=image_path, query=query, tools_str=tools, critic_flag=critic_flag, stream=stream)
+        image_qna = ImageAgent(image_path=image_path, query=query, tools_str=tools, critic_flag=critic_flag, stream=stream)
 
         if stream:
             stream_response = await image_qna.run_stream()

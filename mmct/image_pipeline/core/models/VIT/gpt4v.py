@@ -20,6 +20,7 @@ load_dotenv(find_dotenv(),override=True)
 
 class GPT4V:
     def __init__(self, api_key=None):
+        self.model_name = os.getenv("GPT4V_DEPLOYMENT")
         service_provider = os.getenv("LLM_PROVIDER", "azure")
         self.client = LLMClient(service_provider=service_provider).get_client()
 
@@ -82,7 +83,7 @@ class GPT4V:
                         ],
                     }
                 ],
-                model=self.deployment_name,
+                model=self.model_name,
                 temperature=0,
             )
             generated_text = response.choices[0].message.content

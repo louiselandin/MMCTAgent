@@ -7,7 +7,7 @@ import numpy as np
 from typing_extensions import Annotated
 
 
-async def ObjectDetectTool(img: Annotated[str, "local path of image"]) -> str:
+async def objectDetectTool(img: Annotated[str, "local path of image"]) -> str:
     """
     Object Detection tool
     """

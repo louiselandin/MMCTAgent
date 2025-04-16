@@ -57,5 +57,5 @@ async def criticTool(img_path: Annotated[str, "path of image"], query: Annotated
                 """
     img = Image.open(img_path).convert("RGB")
     a = GPT4V()
-    resp = a.run(images=img,prompt=prompt)
+    resp = await a.run(images=img,prompt=prompt)
     return resp

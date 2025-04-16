@@ -9,7 +9,7 @@ from PIL import Image
 from typing_extensions import Annotated
 
 
-async def OCRTool(
+async def ocrTool(
         img: Annotated[str, "Path to the input image file."],
         priority: Annotated[
             str,
