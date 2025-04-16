@@ -1,0 +1,1 @@
+This directory contains video pipeline code of MMCT based on AutoGen.
