@@ -30,11 +30,23 @@ class BlobStorageManager:
             credential=self.credential,
         )
 
-    async def get_blob_url(self, container: str, blob_name: str) -> str:
-        """Return the unencoded URL for a blob."""
+    def get_blob_url(self, container: str, blob_name: str) -> str:
+        """
+        Generate a URL for a blob that doesn't yet exist in storage.
+        
+        This method creates a URL pointing to where the blob would be located
+        without actually creating or checking for the blob's existence.
+        Useful for pre-generating URLs for future blob uploads.
+        
+        Args:
+            container: The container name where the blob would be stored
+            blob_name: The name for the potential future blob
+            
+        Returns:
+            str: The unencoded URL that the blob would have when uploaded
+        """
         client = self.service_client.get_blob_client(container=container, blob=blob_name)
         url = unquote(client.url)
-        await client.close()
         return url
 
     async def upload_file(self, container: str, blob_name: str, file_path: str) -> str:

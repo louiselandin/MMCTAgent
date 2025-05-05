@@ -139,8 +139,8 @@ class VideoAgent:
 if __name__ == "__main__":
 
     async def main():
-        query = "Describe the video content and summarize the key points."
-        index_name = "general-video-index-v2"
+        query = "who is master sito, what is the story about?"
+        index_name = "telangana-video-index-latest-test"
         use_azure_cv_tool = False
         stream = False
         use_critic_agent = False

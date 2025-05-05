@@ -3,7 +3,7 @@
 venv/
 **/.vscode/
 MMCT/**/*.ipynb
-**/mmct_image_pipeline.egg-info/
+**/mmct_pipeline.egg-info/
 MMCT/UI/uploaded_image.jpeg
 **/media/
 **/images/

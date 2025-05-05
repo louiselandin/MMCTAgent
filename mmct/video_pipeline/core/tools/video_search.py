@@ -146,25 +146,27 @@ class VideoSearch:
             filter_expression = []
 
             if species:
-                #filter_expression.append(f"species eq '{species}'")
-                filter_expression.append(f"search.ismatch('\"{species}\"', 'species')")
-
+                filter_expression.append(f"species eq '{species}'")
             if variety:
-                #filter_expression.append(f"variety eq '{variety}'")
-                filter_expression.append(f"search.ismatch('\"{variety}\"', 'variety')")
+                if variety != "None":
+                    print(F"setting filter for variety: {variety}")
+                    filter_expression.append(f"variety eq '{variety}'")
 
             if filter_expression:
                 filter_query = " and ".join(filter_expression)
             else:
                 filter_query = None
+                
             results = await index_client.search(
                 search_text=None,
                 vector_queries=[vector_query],
                 vector_filter_mode=VectorFilterMode.PRE_FILTER,
                 top=50,
                 filter=filter_query,
-                select=["content", "species", "variety", "url", "url_id"], #blob_video_url, hash_video_id
+                select=["species", "variety", "blob_video_url", "hash_video_id"]
             )
+            
+
             filtered_results = []
             async for result in results:
                 if min_threshold <= result["@search.score"]:
@@ -173,8 +175,8 @@ class VideoSearch:
             top_n_results = []
             seen_urls = set()
             for result in filtered_results:
-                if result["url"] not in seen_urls:
-                    seen_urls.add(result["url"])
+                if result["blob_video_url"] not in seen_urls:
+                    seen_urls.add(result["blob_video_url"])
                     top_n_results.append(result)
                 if len(top_n_results) == top_n:
                     break
@@ -198,6 +200,7 @@ class VideoSearch:
                 species = None
             elif variety == "None":
                 variety = None
+                
             result = await self.search_ai(
                 query,
                 index_name,
@@ -208,18 +211,18 @@ class VideoSearch:
             )
             for results in result:
                 if results:
-                    response_url.append(results["url"])
+                    response_url.append(results["blob_video_url"])
                     scores.append(results["@search.score"])
-                    url_ids.append(results["url_id"])
+                    url_ids.append(results["hash_video_id"])
             if not response_url:
                 print("Searching again")
                 result = await self.search_ai(
                     query, index_name, top_n, min_threshold=min_threshold
                 )
                 for results in result:
-                    response_url.append(results["url"])
+                    response_url.append(results["blob_video_url"])
                     scores.append(results["@search.score"])
-                    url_ids.append(results["url_id"])
+                    url_ids.append(results["hash_video_id"])
             return response_url, scores, url_ids
         except Exception as e:
             raise Exception(
@@ -244,14 +247,14 @@ async def video_search(
     """
     This tool returns the video id of ingested video corresponds to the query
     """
-    video_search = VideoSearch(query=query, top_n=top_n, index_name=index_name)
+    video_search = VideoSearch(query=query, top_n=top_n, index_name=index_name, min_threshold=70)
     res = await video_search.search()
     return res
 
 
 if __name__ == "__main__":
-    query = "what are non-negotiable and non-pesticide management principles in paddy cultivation?"
-    index_name = "telangana-video-index-latest-2"
+    query = "master sito"
+    index_name = "telangana-video-index-latest-test"
     top_n = 1
     res = asyncio.run(video_search(query=query, index_name=index_name, top_n=top_n))
     print(res)

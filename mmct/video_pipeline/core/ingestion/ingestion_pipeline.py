@@ -20,9 +20,10 @@ from mmct.video_pipeline.utils.helper import (
 )
 
 from mmct.video_pipeline.core.ingestion.languages import Languages
-from mmct.video_pipeline.core.ingestion.transcription.transcription_services import TranscriptionServices
+from mmct.video_pipeline.core.ingestion.transcription.transcription_services import (
+    TranscriptionServices,
+)
 
-from mmct.blob_store_manager import BlobStorageManager
 
 from mmct.video_pipeline.core.ingestion.semantic_chunking.semantic import (
     SemanticChunking,
@@ -65,7 +66,7 @@ class IngestionPipeline:
     >>> from mmct.video_pipeline.ingestion import IngestionPipeline
     >>> from mmct.video_pipeline.language import Languages
     >>> import asyncio
-    >>> 
+    >>>
     >>> async def run_ingestion():
     >>>     ingestion = IngestionPipeline(
     >>>         video_path="C:/Users/v-amanpatkar/Downloads/Preparation of Neemasthram - Telugu - SERP- Mahabubnagar - Andhra Pradesh.mp4",
@@ -76,7 +77,7 @@ class IngestionPipeline:
     >>>         use_azure_computer_vision=True
     >>>     )
     >>>     await ingestion()
-    >>> 
+    >>>
     >>> asyncio.run(run_ingestion())
 
     """
@@ -106,6 +107,7 @@ class IngestionPipeline:
         self.language = language
         self.local_resources = []
         self.pending_upload_tasks = []
+        self.blob_urls = {}
 
     async def get_transcription(self):
         self.hash_id = await get_file_hash(file_path=self.video_path)
@@ -117,7 +119,13 @@ class IngestionPipeline:
             else WhisperTranscription(video_path=self.video_path, hash_id=self.hash_id)
         )
         audio_extension = (
-            ".wav" if self.transcription_service == TranscriptionServices.AZURE_STT else ".mp3"
+            ".wav"
+            if self.transcription_service == TranscriptionServices.AZURE_STT
+            else ".mp3"
+        )
+        self.blob_urls["audio_blob_url"] = self.blob_manager.get_blob_url(
+            container=self.audio_container,
+            blob_name=f"{self.hash_id}" + audio_extension,
         )
         self.transcript, local_paths = await transcriber()
         logger.info(f"ingestion first transcript:{self.transcript}")
@@ -130,6 +138,27 @@ class IngestionPipeline:
                     (f"{self.hash_id}" + audio_extension),
                 ),
             )
+        )
+
+        self.pending_upload_tasks.append(
+            self.blob_manager.upload_file(
+                container=self.transcript_container,
+                blob_name=f"transcript_{self.hash_id}.srt",
+                file_path=os.path.join(
+                    await get_media_folder(),
+                    f"transcript_{self.hash_id}.srt",
+                ),
+            )
+        )
+
+        self.blob_urls["transcript_blob_url"] = self.blob_manager.get_blob_url(
+            container=self.transcript_container,
+            blob_name=f"transcript_{self.hash_id}.srt",
+        )
+        
+        self.blob_urls['transcript_and_summary_file_url'] = self.blob_manager.get_blob_url(
+            container=self.summary_n_transcript,
+            blob_name=f"{self.hash_id}.json",
         )
 
         self.local_resources.extend(local_paths)
@@ -159,9 +188,12 @@ class IngestionPipeline:
             self.blob_manager.upload_file(
                 container=self.summary_n_transcript,
                 blob_name=f"{self.hash_id}.json",
-                file_path=os.path.join(await get_media_folder(),f"{self.hash_id}.json"),
+                file_path=os.path.join(
+                    await get_media_folder(), f"{self.hash_id}.json"
+                ),
             )
         )
+        
 
     async def _semantic_chunking_chapter_generation(self):
         """
@@ -172,13 +204,14 @@ class IngestionPipeline:
             index_name=self.index_name,
             transcript=self.transcript,
             base64Frames=self.base64Frames,
+            blob_urls=self.blob_urls
         )
 
     async def _get_frames_timestamps(self):
         self.frames, self.timestamps = await extract_frames(video_path=self.video_path)
         self.base64Frames = await encode_frames_to_base64(self.frames)
         png_paths = await save_frames_as_png(
-            self.frames, os.path.join(await get_media_folder(),f"Frames",self.hash_id)
+            self.frames, os.path.join(await get_media_folder(), f"Frames", self.hash_id)
         )
         self.local_resources.extend(png_paths)  # Track for cleanup
 
@@ -192,7 +225,9 @@ class IngestionPipeline:
             )
 
         async with aiofiles.open(
-           os.path.join(await get_media_folder(), f"timestamps_{self.hash_id}.txt"), "w", encoding="utf-8"
+            os.path.join(await get_media_folder(), f"timestamps_{self.hash_id}.txt"),
+            "w",
+            encoding="utf-8",
         ) as f:
             await f.write("\n".join(map(str, self.timestamps)))
 
@@ -200,8 +235,19 @@ class IngestionPipeline:
             self.blob_manager.upload_file(
                 container=self.timestamps_container,
                 blob_name=f"timestamps_{self.hash_id}.txt",
-                file_path= os.path.join(await get_media_folder(), f"timestamps_{self.hash_id}.txt"),
+                file_path=os.path.join(
+                    await get_media_folder(), f"timestamps_{self.hash_id}.txt"
+                ),
             )
+        )
+
+        self.blob_urls["frames_blob_folder_url"] = self.blob_manager.get_blob_url(
+            container=self.frames_container, blob_name=f"frames/{self.hash_id}"
+        )
+        
+        self.blob_urls['timestamps_blob_url'] = self.blob_manager.get_blob_url(
+            container=self.timestamps_container,
+            blob_name=f"timestamps_{self.hash_id}.txt",
         )
 
         del png_paths
@@ -251,13 +297,13 @@ class IngestionPipeline:
 
 
 if __name__ == "__main__":
-    video_path = "C:/Users/v-amanpatkar/Downloads/Preparation of Neemasthram - Telugu - SERP- Mahabubnagar - Andhra Pradesh.mp4"
-    index = "general-video-index-v2"
-    source_language = Languages.TELUGU_INDIA
+    video_path = "C:/Users/v-amanpatkar/Downloads/mastering_happiness_lesson.mp4"
+    index = "telangana-video-index-latest-test"
+    source_language = Languages.ENGLISH_INDIA
     ingestion = IngestionPipeline(
         video_path=video_path,
         index_name=index,
-        transcription_service=TranscriptionServices.WHISPER,
+        transcription_service=TranscriptionServices.AZURE_STT,
         language=source_language,
     )
     asyncio.run(ingestion())

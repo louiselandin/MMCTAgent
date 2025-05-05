@@ -2,8 +2,10 @@ import warnings
 import uuid
 import os
 import asyncio
+from datetime import datetime
 from typing import List, Dict, Any, Union, Optional
 from azure.search.documents import SearchClient
+from mmct.video_pipeline.utils.ai_search_client import AISearchClient, AISearchDocument
 from azure.identity import DefaultAzureCredential
 from azure.core.credentials import AzureKeyCredential
 from mmct.video_pipeline.core.ingestion.semantic_chunking.process_transcript import (
@@ -23,7 +25,7 @@ load_dotenv(find_dotenv(),override=True)
 
 
 class SemanticChunking:
-    def __init__(self, hash_id:str, index_name:str, transcript:str, base64Frames)->None:
+    def __init__(self, hash_id:str, index_name:str, transcript:str,blob_urls,base64Frames)->None:
         if os.environ.get("AZURE_OPENAI_MANAGED_IDENTITY", None) is None:
             raise Exception(
                 "AZURE_OPENAI_MANAGED_IDENTITY requires boolean value for selecting authorization either with Managed Identity or API Key"
@@ -51,8 +53,20 @@ class SemanticChunking:
         self.index_name = index_name
         self.chapter_generator = ChapterGeneration()
         self.embed_client = LLMClient(service_provider=os.getenv("LLM_PROVIDER", "azure"), isAsync=True, embedding=True).get_client()
-        self.index_client = SearchClient(endpoint=os.getenv("AZURE_AI_SEARCH_ENDPOINT"), index_name=self.index_name, credential=self.token_provider)
-        
+        self.index_client = AISearchClient(
+            endpoint=os.getenv("AZURE_AI_SEARCH_ENDPOINT"),
+            index_name=self.index_name,
+            credential=self.token_provider
+        )
+        self.blob_urls = blob_urls
+        #self.index_client = SearchClient(endpoint=os.getenv("AZURE_AI_SEARCH_ENDPOINT"), index_name=self.index_name, credential=self.token_provider)
+    async def _create_search_index(self):
+        created = await self.index_client.check_and_create_index()
+        if created:
+            logger.info(f"Index {self.index_name} created successfully.")
+        else:
+            logger.info(f"Index {self.index_name} already exists.")
+    
     async def create_embedding_normal(self,text:str) -> List[float]:
         try:
             response = await self.embed_client.embeddings.create(
@@ -127,26 +141,43 @@ class SemanticChunking:
         
         
     async def ingest(self, video_blob_url, youtube_url=None):
+        await self._create_search_index()
         url_info = f'BLOB={video_blob_url}\nYT_URL={youtube_url}'
-        self.docs = []
-        for txt in self.chapter_response_strings:  # Use strings with transcript for indexing
-            self.docs.append({
-                "id": str(uuid.uuid4()),
-                "content": txt,
-                "url": url_info,
-                "species": self.species_data['species'],
-                "variety": self.species_data['Variety_of_species'],
-                "url_id": self.hash_id,
-                "embeddings": await self.create_embedding_normal(txt)
-            })
+        doc_objects: List[AISearchDocument] = [] 
+        current_time = datetime.now()
+        for chapter_response, chapter_transcript in zip(self.chapter_responses, self.chapter_transcripts):  # Use strings with transcript for indexing
+            chapter_content_str = chapter_response.__str__(transcript=chapter_transcript)
+            obj = AISearchDocument(
+                id=str(uuid.uuid4()),
+                hash_video_id=self.hash_id,
+                topic_of_video=chapter_response.Topic_of_video or "None",
+                action_taken=chapter_response.Action_taken or "None",
+                detailed_summary=chapter_response.Detailed_summary or "None",
+                category=chapter_response.Category or "None",
+                sub_category=chapter_response.Sub_category or "None",
+                text_from_scene=chapter_response.Text_from_scene or "None",
+                youtube_url=youtube_url or "None",
+                time=current_time,
+                chapter_transcript=chapter_transcript,
+                species=self.species_data['species'] or "None",
+                variety=self.species_data['Variety_of_species'] or "None",
+                blob_audio_url=self.blob_urls['audio_blob_url'] or "None",
+                blob_video_url=video_blob_url or "None",
+                blob_transcript_file_url=self.blob_urls['transcript_blob_url'] or "None",
+                blob_frames_folder_path=self.blob_urls['frames_blob_folder_url'] or "None",
+                blob_timestamps_file_url=self.blob_urls['timestamps_blob_url'] or "None",
+                blob_transcript_and_summary_file_url=self.blob_urls['transcript_and_summary_file_url'] or "None",
+                embeddings=await self.create_embedding_normal(chapter_content_str)
+            )
+            doc_objects.append(obj)
             
-        self.index_client.upload_documents(documents=self.docs)
+        await self.index_client.upload_documents(documents=[doc.model_dump() for doc in doc_objects])
         
     async def run(self,video_blob_url, youtube_url=None):
         await self.pre_process()
         await self.create_chapters()
         await self.ingest(video_blob_url=video_blob_url, youtube_url=youtube_url)
-        self.index_client.close()
+        await self.index_client.close()
         return self.chapter_responses, self.chapter_transcripts
         
 if __name__=="__main__":

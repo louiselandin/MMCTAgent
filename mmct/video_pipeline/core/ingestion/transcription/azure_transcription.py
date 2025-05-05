@@ -246,7 +246,7 @@ class AzureTranscription(Transcription):
                 transcript
             )  # translating to english
             logger.info(f"translated {transcript}")
-        transcript_save_path = os.path.join(await get_media_folder(),f"Transcript_{self.hash_id}.srt")
+        transcript_save_path = os.path.join(await get_media_folder(),f"transcript_{self.hash_id}.srt")
         async with aiofiles.open(
             transcript_save_path, "w", encoding="utf-8"
         ) as f:
