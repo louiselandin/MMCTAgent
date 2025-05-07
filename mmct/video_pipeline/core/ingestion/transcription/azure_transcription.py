@@ -15,10 +15,12 @@ from mmct.video_pipeline.utils.helper import extract_wav_from_video
 from mmct.video_pipeline.core.ingestion.languages import Languages
 from mmct.video_pipeline.utils.helper import get_media_folder
 from dotenv import load_dotenv, find_dotenv
+
 load_dotenv(find_dotenv(), override=True)
 
+
 class AzureTranscription(Transcription):
-    def __init__(self, video_path: str, hash_id: str, language:str=None) -> None:
+    def __init__(self, video_path: str, hash_id: str, language: str = None) -> None:
         super().__init__(video_path=video_path, hash_id=hash_id, language=language)
         self.audio_container = os.getenv("AUDIO_CONTAINER")
         self.local_save = []
@@ -26,7 +28,9 @@ class AzureTranscription(Transcription):
     async def _load_audio(self):
         try:
             logger.info("Extracting the audio from the video")
-            self.audio_path = os.path.join(await get_media_folder(), f"{self.hash_id}.wav")
+            self.audio_path = os.path.join(
+                await get_media_folder(), f"{self.hash_id}.wav"
+            )
 
             await extract_wav_from_video(
                 video_path=self.video_path, output_path=self.audio_path
@@ -34,7 +38,7 @@ class AzureTranscription(Transcription):
             self.local_save.append(self.audio_path)
         except Exception as e:
             logger.exception(f"Error loading audio, {e}")
-            raise 
+            raise
 
     async def detect_language(self):
         try:
@@ -42,9 +46,11 @@ class AzureTranscription(Transcription):
                 "https://cognitiveservices.azure.com/.default"
             )
             token = token.token
-            resource_id = os.getenv('AZURE_SPEECH_SERVICE_RESOURCE_ID')
+            resource_id = os.getenv("AZURE_SPEECH_SERVICE_RESOURCE_ID")
             token = "aad#" + resource_id + "#" + token
-            speech_config = speechsdk.SpeechConfig(region=os.getenv('AZURE_SPEECH_SERVICE_REGION'), auth_token=token)
+            speech_config = speechsdk.SpeechConfig(
+                region=os.getenv("AZURE_SPEECH_SERVICE_REGION"), auth_token=token
+            )
             audio_config = speechsdk.audio.AudioConfig(filename=self.audio_path)
             lang = None
             conf = None
@@ -86,17 +92,23 @@ class AzureTranscription(Transcription):
                     "https://cognitiveservices.azure.com/.default"
                 )
             token = token.token
-            resource_id = os.getenv('AZURE_SPEECH_SERVICE_RESOURCE_ID')
+            resource_id = os.getenv("AZURE_SPEECH_SERVICE_RESOURCE_ID")
             auth_token = f"aad#{resource_id}#{token}"
             speech_config = speechsdk.SpeechConfig(
-                region=os.getenv('AZURE_SPEECH_SERVICE_REGION'), auth_token=auth_token
+                region=os.getenv("AZURE_SPEECH_SERVICE_REGION"), auth_token=auth_token
             )
             logger.info("Speech Config initialized")
             if self.source_language == None:
                 lang = await self.detect_language()
-                self.source_language['lang-code'] = lang if lang not in [None, "Unknown"] else "en-IN"
-                self.source_language['lang'] = Languages(self.source_language['lang-code']).name
-            speech_config.speech_recognition_language = self.source_language['lang-code']
+                self.source_language["lang-code"] = (
+                    lang if lang not in [None, "Unknown"] else "en-IN"
+                )
+                self.source_language["lang"] = Languages(
+                    self.source_language["lang-code"]
+                ).name
+            speech_config.speech_recognition_language = self.source_language[
+                "lang-code"
+            ]
             audio_config = speechsdk.audio.AudioConfig(filename=self.audio_path)
 
             transcriber = speechsdk.transcription.ConversationTranscriber(
@@ -104,7 +116,7 @@ class AzureTranscription(Transcription):
             )
 
             # 3) (Optional) Add your phrase list -- Only available for Hindi right now
-            if self.source_language['lang-code'] == "hi-IN":
+            if self.source_language["lang-code"] == "hi-IN":
                 phrase_list = speechsdk.PhraseListGrammar.from_recognizer(transcriber)
                 for phrase in self.hindi_glossary[:500]:
                     phrase_list.addPhrase(phrase)
@@ -193,7 +205,69 @@ class AzureTranscription(Transcription):
             logger.exception(f"Formatting failed, Error: {e}")
             raise
 
-    async def _get_translated_transcript(self, text: str,  max_chars_per_batch: int = 2000) -> TranslationResponse:
+    async def _translate_batch(
+        self, batch, max_retries=3, current_retry=0, prompt=None
+    ):
+        """Translate a batch of text with retry logic for handling response mismatches"""
+        to_translate = json.dumps([e["text"] for e in batch], ensure_ascii=False)
+        logger.info(
+            f"Translating batch of {len(batch)} entries (retry {current_retry}/{max_retries}):\n{to_translate}"
+        )
+        messages = [
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt,
+                    }
+                ],
+            },
+            {"role": "user", "content": f"Text to translate:\n{to_translate}"},
+        ]
+
+        response = await self.llm_client.beta.chat.completions.parse(
+            model=os.getenv(
+                "AZURE_OPENAI_MODEL"
+                if os.getenv("LLM_PROVIDER") == "azure"
+                else "OPENAI_MODEL"
+            ),
+            messages=messages,
+            temperature=0,
+            top_p=0.1,
+            response_format=TranslationResponse,
+        )
+
+        translation_response: TranslationResponse = response.choices[0].message.parsed
+        translations = translation_response.translations
+
+        # Check if number of translations matches number of entries
+        if len(translations) != len(batch):
+            logger.warning(
+                f"Mismatch: received {len(translations)} translations for {len(batch)} entries"
+            )
+
+            # If we've reached max retries or have only one entry, return what we have
+            if current_retry >= max_retries or len(batch) <= 1:
+                raise ValueError(
+                    "Max retries reached for translation, or can't split further."
+                )
+
+            # Split the batch and retry with smaller batches
+            mid = len(batch) // 2
+            first_half = await self._translate_batch(
+                batch[:mid], max_retries, current_retry + 1
+            )
+            second_half = await self._translate_batch(
+                batch[mid:], max_retries, current_retry + 1
+            )
+            return first_half + second_half
+
+        return translations
+
+    async def _get_translated_transcript(
+        self, text: str, max_chars_per_batch: int = 2000
+    ) -> TranslationResponse:
         try:
             logger.info("Retrieving the translated transcript")
             raw_blocks = [b.strip() for b in text.strip().split("\n\n") if b.strip()]
@@ -207,8 +281,8 @@ class AzureTranscription(Transcription):
                 timestamp = lines[1]
                 content = "\n".join(lines[2:])
                 entries.append({"seq": seq_no, "time": timestamp, "text": content})
-                
-             # Batch entries by text length
+
+            # Batch entries by text length
             batches: List[List[dict]] = []
             curr_batch, curr_len = [], 0
             logger.info("Aggregating the text chunks into batches")
@@ -220,66 +294,41 @@ class AzureTranscription(Transcription):
                 curr_batch.append(entry)
                 curr_len += length
             if curr_batch:
-                batches.append(curr_batch)  
-                
-                
-            prompt = """You are brilliant transcript translator, your task is to translate the given transcript from {source_language} to English.
+                batches.append(curr_batch)
 
-            # Note: 
-            - Do not remove any part of original transcript, just translate the segment of the transcript.
-            - given transcript will contain the text with their timestamps.
-            - given transcripts can be in different dialects of {source_language}, so be careful while translating.
-            - Retain the count and the timestamp that are there in the given transcript.
+            system_prompt = """You are a highly skilled translator. Your task is to translate the provided JSON array of text from {source_language} to English with utmost accuracy.
+
+            # Instructions:
+            - Translate each line of the input text exactly as it is, without adding, omitting, or altering any information.
+            - The input text may include different dialects of {source_language}; translate them carefully while preserving the original meaning.
+            - Do not hallucinate or introduce any new information that is not present in the input text.
+            - If a term or phrase is unclear, translate it as closely as possible to its original meaning without making assumptions.
             """
-            prompt = prompt.format(source_language=self.source_language['lang'].split("_")[0].capitalize())
+            prompt = prompt.format(
+                source_language=self.source_language["lang"].split("_")[0].capitalize()
+            )
             logger.info("Inserting the source language to prompt")
-            if self.source_language['lang-code'] == "hi-IN":
+            if self.source_language["lang-code"] == "hi-IN":
                 logger.info("Adding glossary for hindi vocabulary")
                 glossary_table = self.glossary_df[
                     self.glossary_df["hindi_terms"].apply(lambda term: term in text)
                 ].to_markdown(index=False)
                 prompt += f"\n\n# Glossary:\n{glossary_table}\n"
-                
+
             all_translations: List[str] = []
             logger.info("Translating the texts batchwise")
+                # Process each batch with retry logic
             for batch in batches:
-                to_translate = json.dumps([e["text"] for e in batch], ensure_ascii=False)
-                messages=[
-                        {
-                            "role": "system",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": prompt,
-                                }
-                            ],
-                        },
-                        {"role": "user", "content": f"Text to translate:\n{to_translate}"},
-                    ]
-                
-                response = await self.llm_client.beta.chat.completions.parse(
-                    model=os.getenv(
-                        "AZURE_OPENAI_MODEL"
-                        if os.getenv("LLM_PROVIDER") == "azure"
-                        else "OPENAI_MODEL"
-                    ),
-                    messages=messages,
-                    temperature=0,
-                    top_p=0.1,
-                    response_format=TranslationResponse
-                )
-                
-                translation_response: TranslationResponse = response.choices[0].message.parsed
-                all_translations.extend(translation_response.translations)
-            
-            logger.info("Succesfully translated the batchwise text chunks")    
+                batch_translations = await self._translate_batch(batch, prompt=prompt)
+                all_translations.extend(batch_translations)
+
             # Reassemble into SRT format
             output_blocks = []
             for entry, translation in zip(entries, all_translations):
                 block = "\n".join([entry["seq"], entry["time"], translation.strip()])
                 output_blocks.append(block)
-            logger.info("Reassembled the batchwise translated chunks to SRT format")
-            return "\n\n".join(output_blocks) 
+
+            return "\n\n".join(output_blocks)
         except Exception as e:
             logger.exception(f"Error translating transcript: {e}")
             raise
@@ -293,23 +342,24 @@ class AzureTranscription(Transcription):
                 transcript=transcript
             )  # Formatting the transcript as same as whisper
             logger.info(f"formatted transcript:{transcript}")
-            if self.source_language['lang-code'] != "en-IN":
+            if self.source_language["lang-code"] != "en-IN":
                 transcript = await self._get_translated_transcript(
                     transcript
                 )  # translating to english
                 logger.info(f"translated {transcript}")
-            transcript_save_path = os.path.join(await get_media_folder(),f"transcript_{self.hash_id}.srt")
-            async with aiofiles.open(
-                transcript_save_path, "w", encoding="utf-8"
-            ) as f:
+            transcript_save_path = os.path.join(
+                await get_media_folder(), f"transcript_{self.hash_id}.srt"
+            )
+            async with aiofiles.open(transcript_save_path, "w", encoding="utf-8") as f:
                 await f.write(transcript)
-                
+
             self.local_save.append(transcript_save_path)
 
             return transcript, self.local_save
         except Exception as e:
             logger.exception(f"Exception occured : {e}")
-            raise 
+            raise
+
 
 if __name__ == "__main__":
     video_path = "C:/Users/v-amanpatkar/Downloads/sample_video2.mp4"

@@ -91,7 +91,7 @@ class IngestionPipeline:
         language: Languages,
         transcription_service: Optional[str] = TranscriptionServices.AZURE_STT.value,
         youtube_url: Optional[str] = None,
-        use_azure_computer_vision: Optional[str] = True,
+        use_azure_computer_vision: Optional[bool] = True,
         disable_console_log: Annotated[
             bool, "boolean flag to disable console logs"
         ] = False,
