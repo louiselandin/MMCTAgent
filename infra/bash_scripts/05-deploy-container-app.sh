@@ -1,6 +1,10 @@
 #!/bin/bash
 export MSYS_NO_PATHCONV=1
-source 00-setup-env-vars.sh
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source the env vars using absolute path
+source "$script_dir/00-setup-env-vars.sh"
 
 ## Container Apps Config
 CPU="2"

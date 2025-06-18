@@ -1,5 +1,9 @@
 # fetching the variables from the source file
-source 00-setup-env-vars.sh
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source the env vars using absolute path
+source "$script_dir/00-setup-env-vars.sh"
+
 export MSYS_NO_PATHCONV=1
 
 # fetching the resource id for premium app service plan

@@ -1,7 +1,11 @@
 #!/bin/bash
 
+set -e
 # Variables
-source 00-setup-env-vars.sh
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source the env vars using absolute path
+source "$script_dir/00-setup-env-vars.sh"
 
 subscriptionId=$(az account show --query id -o tsv)
 
@@ -23,7 +27,8 @@ if [ -z "$identityExists" ]; then
   echo "Identity does not exist. Creating identity '$identityName'..."
   az identity create \
     --name "$identityName" \
-    --resource-group "$resourceGroup"
+    --resource-group "$resourceGroup" \
+    --debug
   echo "Identity '$identityName' created successfully."
 else
   echo "Identity '$identityName' already exists. Skipping creation."
