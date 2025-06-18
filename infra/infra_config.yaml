@@ -1,0 +1,24 @@
+deployInfra:
+  enabled: true
+  storageAccount: false
+  aiSearchService: false
+  azureSpeechService: false
+  containerRegistry: false
+  appServicePremiumPlan: false
+  appServiceBasicPlan: false
+  eventHubService: false
+  azureOpenAIService: false
+
+midentityCreation: 
+  enabled: true
+
+buildPushImages:
+  enabled: false
+  buildImages: false
+  pushImages: false
+
+deployAppService:
+  enabled: false
+
+deployContainerApps:
+  enabled: false

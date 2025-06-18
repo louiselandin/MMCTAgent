@@ -1,62 +1,94 @@
-# ARM Template Infrastructure Deployment Guide
+# 🚀 MMCT Infrastructure Deployment Guide
 
-This repository contains Bash scripts and ARM templates to automate the deployment of Azure infrastructure components like App Services, Container Apps, Managed Identity, and Container Registries.
+This repository provides an automated way to deploy Azure resources and application services for the MMCT Pipelines using **ARM templates**, **Bash scripts**, and a single configuration file (`infra_config.yaml`).
 
 ---
 
 ## 📋 Prerequisites
 
-Before using this setup, ensure the following tools are installed and configured:
+Before you begin, ensure the following tools are installed:
 
-### 🔧 Tools Required
+### 🔧 Required Tools
 
-- **Azure CLI**: [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
-- **Docker**: [Install Docker](https://docs.docker.com/get-docker/)
-- **Bash Shell**:  
-  - **Windows**: Use [Git Bash](https://git-scm.com/downloads) or [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
-  - **Linux/macOS**: Native Bash supported
+| Tool         | Description                              | Link |
+|--------------|------------------------------------------|------|
+| **Azure CLI**| For Azure login and resource deployment  | [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) |
+| **Docker**   | Required for building and pushing images | [Install Docker](https://docs.docker.com/get-docker/) |
+| **Bash Shell**| For running the deployment scripts      | Use **Git Bash**, **WSL**, or native **Bash** on Linux/macOS |
 
 ### 🔐 Azure Authentication
+
+Authenticate and set your subscription using Azure CLI:
 
 ```bash
 az login
 az account set --subscription "<your-subscription-name-or-id>"
 ```
 
-### 🔓 Make Scripts Executable (Linux/macOS/WSL)
+### ⚙️ Configuration via infra_config.yaml
+
+The deployment is controlled through a single YAML config file (infra_config.yaml), allowing selective resource provisioning.
+
+### 🔄 How It Works
+Each section in the config file controls a part of the deployment:
+
+| Section                    | Purpose                                           |
+|---------------------------|---------------------------------------------------|
+| deployInfra.*             | Deploy selected Azure infra components via ARM   |
+| midentityCreation.enabled | Create and assign roles to a Managed Identity     |
+| buildPushImages.*         | Build and/or push Docker images                   |
+| deployAppService.enabled  | Deploy producer apps to Azure App Service         |
+| deployContainerApps.enabled | Deploy consumer apps to Azure Container Apps  |
+
+Set the values to true or false to enable/disable specific deployments.
+
+### 🚦 Execution Flow
+You can use individual scripts or trigger everything through a single orchestrator.
+
+✅ Step-by-Step Breakdown
+
+**Edit Config File**  
+Open `infra_config.yaml` and toggle the values according to your needs.
+
+**Make Scripts Executable (if needed)**  
+On Linux/macOS/WSL:
 
 ```bash
-chmod +x 00-setup-env-vars.sh
-chmod +x 01-deploy-infra.sh
-chmod +x 02-create-managed-identity.sh
-chmod +x 04-deploy-app-service.sh
-chmod +x 05-deploy-container-app.sh
+chmod +x *.sh
 ```
 
-> On Windows, use Git Bash or Windows Subsystem for Linux (WSL) to execute scripts.
-If you're using PowerShell, adapt the syntax accordingly or use WSL for better compatibility.
-
-## 🧭 Flow of Execution
-
-1. Set up the environment variables
-2. Deploy the necessary/required resources.
-3. Create the Managed Identity Resource.
-4. Build the docker images and push to Container Registry
-5. Deploy App services.
-6. Deploy the Container Apps.
-
-### **1. Setup the env/variable name**
-
-- Add relevant names of the required resources and container images in the `00-setup-env-vars.sh`
-- Ensure the names do not exceed the character limit and naming convention form for each resource.
-- `Tip: use lowercase characters under 24 characters without any special characters`
-
-#### **2. Deploy the Resources**
-
-- Deploy the resources (except App Services, Container Apps and Identity Resource) by running `01-deploy-infra.sh` file.
-
-> `01-deploy-infra.sh` file fetches the names of resources from `00-setup-env-vars.sh`, check the existance of the respective resource and if the resource do not exists, then creates it.
+**Run the All-in-One Script**
 
 ```bash
-./01-deploy-infra.sh
+./deploy-all.sh
 ```
+
+This will execute the scripts in the following logical order based on config:
+
+1. `00-setup-env-vars.sh`: Sets environment variables.
+2. `01-deploy-infra.sh`: Deploys infra resources as per deployInfra section.
+3. `02-create-managed-identity.sh`: Creates and assigns roles to Managed Identity.
+4. `03-build-push-docker-images.sh`: Builds and pushes Docker images if enabled.
+5. `04-deploy-app-service.sh`: Deploys App Services if enabled.
+6. `05-deploy-container-app.sh`: Deploys Container Apps if enabled.
+
+### 📁 File Structure
+
+```bash
+.
+├── infra_config.yaml                    # Main config to control deployments
+├── deploy-all.sh                        # Master script   
+├── bash_scripts/         
+|    ├── 00-setup-env-vars.sh            # Loads variable names
+|    ├── 01-deploy-infra.sh              # Deploys infrastructure
+|    ├── 02-create-managed-identity.sh   # Handles Managed Identity creation and role assignment
+|    ├── 03-build-push-docker-images.sh  # Builds/pushes Docker images
+|    ├── 04-deploy-app-service.sh        # Deploys App Services
+|    └── 05-deploy-container-app.sh      # Deploys Container Apps
+└── arm_templates/                  # Contains ARM JSON templates
+```
+
+### 💡 Notes
+- Always review `infra_config.yaml` before executing.
+- Scripts are idempotent – resources won’t be recreated if they already exist.
+- If you're using Windows, we recommend using Git Bash or WSL for better compatibility.

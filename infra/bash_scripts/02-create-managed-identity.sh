@@ -1,54 +1,84 @@
 #!/bin/bash
 
 set -e
-# Variables
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$(realpath "$script_dir/../infra_config.yaml")"
 
-# Source the env vars using absolute path
+# Load env vars
 source "$script_dir/00-setup-env-vars.sh"
 
+# Function to get value from YAML
+get_yaml_value() {
+    python -c "import yaml, sys; print(yaml.safe_load(sys.stdin.read())$1)" < "$CONFIG_FILE"
+}
+
+# Check if managed identity creation is enabled
+if [[ "$(get_yaml_value "['midentityCreation']['enabled']")" != "True" ]]; then
+  echo "🔒 Managed identity creation disabled in config. Exiting."
+  exit 0
+fi
+
+# Fetch subscription ID
 subscriptionId=$(az account show --query id -o tsv)
+echo "🧾 Subscription ID: $subscriptionId"
 
-echo "Subscription id: $subscriptionId"
+# Check/create identity
+echo "🔍 Checking if identity '$identityName' exists in resource group '$resourceGroup'..."
 
-# set the subscription name if subscription not set
-# az account set --subscription ""
-
-# Check if the identity exists
-echo "Checking if the identity '$identityName' exists in resource group '$resourceGroup'..."
-identityExists=$(az identity show \
+if identityExists=$(az identity show \
   --name "$identityName" \
   --resource-group "$resourceGroup" \
   --query "name" \
-  --output tsv 2>/dev/null)
-
-# Create the identity if it does not exist
-if [ -z "$identityExists" ]; then
-  echo "Identity does not exist. Creating identity '$identityName'..."
+  --output tsv 2>/dev/null); then
+  echo "✅ Identity '$identityName' already exists. Skipping creation."
+else
+  echo "🆕 Identity does not exist. Creating identity '$identityName'..."
   az identity create \
     --name "$identityName" \
-    --resource-group "$resourceGroup" \
-    --debug
-  echo "Identity '$identityName' created successfully."
-else
-  echo "Identity '$identityName' already exists. Skipping creation."
+    --resource-group "$resourceGroup"
+  echo "✅ Identity '$identityName' created successfully."
 fi
 
-clientId=$(az identity show --name $identityName --resource-group $resourceGroup --query clientId -o tsv)
+clientId=$(az identity show --name "$identityName" --resource-group "$resourceGroup" --query clientId -o tsv)
 
-# Declaring the roles and assigning the them to the managed identity resource
-declare -A resources=(
-  ["Storage Blob Data Contributor"]="Microsoft.Storage/storageAccounts/$storageAccountName"
-  ["Cognitive Services OpenAI User"]="Microsoft.CognitiveServices/accounts/$azureOpenAIName"
-  ["Search Index Data Contributor"]="Microsoft.Search/searchServices/$aiSearchServiceName"
-  ["Search Service Contributor"]="Microsoft.Search/searchServices/$aiSearchServiceName"
-  ["Azure Event Hubs Data Owner"]="Microsoft.EventHub/namespaces/$eventhubName"
-  ["Cognitive Services Speech Contributor"]="Microsoft.CognitiveServices/accounts/$azureSpeechServiceName"
-  ["AcrPull"]="Microsoft.ContainerRegistry/registries/$containerRegistryName"
+# Define mapping: yamlKey => (envVar, role, resourceType)
+declare -A yaml_to_config_map=(
+  ["storageAccount"]="storageAccountName|Storage Blob Data Contributor|Microsoft.Storage/storageAccounts"
+  ["azureOpenAIService"]="azureOpenAIName|Cognitive Services OpenAI User|Microsoft.CognitiveServices/accounts"
+  ["aiSearchService"]="aiSearchServiceName|Search Index Data Contributor|Microsoft.Search/searchServices"
+  ["azureSpeechService"]="azureSpeechServiceName|Cognitive Services Speech Contributor|Microsoft.CognitiveServices/accounts"
+  ["containerRegistry"]="containerRegistryName|AcrPull|Microsoft.ContainerRegistry/registries"
+  ["eventHubService"]="eventhubName|Azure Event Hubs Data Owner|Microsoft.EventHub/namespaces"
 )
 
-for role in "${!resources[@]}"; do
-  RESOURCE_SCOPE="subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/${resources[$role]}"
-  echo "Assigning role '$role' to identity '$identityName' on scope '$RESOURCE_SCOPE'"
-  az role assignment create --assignee $clientId --role "$role" --scope $RESOURCE_SCOPE
+# Assign roles only if enabled in YAML and variable is non-empty
+for yamlKey in "${!yaml_to_config_map[@]}"; do
+  isEnabled=$(get_yaml_value "['deployInfra']['$yamlKey']")
+  IFS='|' read -r varName role resourceType <<< "${yaml_to_config_map[$yamlKey]}"
+  resourceName="${!varName}"
+
+  if [[ "$isEnabled" == "True" ]]; then
+    if [[ -z "$resourceName" ]]; then
+      echo "⚠️ Variable for $yamlKey ($varName) is empty. Skipping role assignment."
+      continue
+    fi
+
+    # Check if the resource exists
+    echo "🔍 Checking if resource '$resourceName' of type '$resourceType' exists..."
+    if az resource show \
+        --name "$resourceName" \
+        --resource-group "$resourceGroup" \
+        --resource-type "$resourceType" \
+        --query "id" \
+        --output tsv >/dev/null 2>&1; then
+
+      RESOURCE_SCOPE="/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/providers/$resourceType/$resourceName"
+      echo "🔐 Assigning role '$role' on scope '$RESOURCE_SCOPE'"
+      az role assignment create --assignee "$clientId" --role "$role" --scope "$RESOURCE_SCOPE"
+    else
+      echo "🚫 Resource '$resourceName' does not exist. Skipping role assignment."
+    fi
+  else
+    echo "⏭️ $yamlKey deployment not enabled. Skipping."
+  fi
 done
