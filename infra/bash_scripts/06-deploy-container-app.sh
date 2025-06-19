@@ -73,10 +73,7 @@ else
   --min-replicas "$MIN_REPLICAS" \
   --max-replicas "$MAX_REPLICAS"  \
   --env-vars AZURE_CLIENT_ID="$clientIdOfIdentity" \
-        JWT_EXPIRATION_TIME="10" \
-        JWT_SECRET_KEY="SECRET_KEY@OS" \
-        JWT_ALGORITHM="HS256" \
-        BLOB_CONTAINER_NAME="gecko-videocontainer" \
+        VIDEO_CONTAINER_NAME="gecko-videocontainer" \
         FRAMES_CONTAINER_NAME="gecko-framescontainer" \
         TIMESTAMPS_CONTAINER_NAME="gecko-timestampscontainer" \
         TRANSCRIPT_CONTAINER_NAME="gecko-transcriptcontainer" \
@@ -122,11 +119,6 @@ else
         AZURE_OPENAI_EMBED_MODEL="text-embedding-ada-002" \
         AZURE_OPENAI_WHISPER_ENDPOINT="https://$azureOpenAIName.openai.azure.com/openai/deployments/whisper/audio/translations?api-version2024-06-01" \
         WHISPER_DEPLOYMENT="whisper" \
-        VIDEO_CONTAINER="gecko-videocontainer" \
-        AUDIO_CONTAINER="gecko-audiocontainer" \
-        TRANSCRIPT_CONTAINER="gecko-transcriptcontainer" \
-        TIMESTAMPS_CONTAINER="gecko-timestampscontainer" \
-        FRAMES_CONTAINER="gecko-framescontainer" \
         EVENT_HUB_HOSTNAME="$eventhubName.servicebus.windows.net" \
         QUERY_EVENT_HUB_NAME="query-eventhub" \
         INGESTION_EVENT_HUB_NAME="ingestion-eventhub" \
@@ -168,10 +160,7 @@ else
   --min-replicas "$MIN_REPLICAS" \
   --max-replicas "$MAX_REPLICAS"  \
   --env-vars AZURE_CLIENT_ID="$clientIdOfIdentity" \
-        JWT_EXPIRATION_TIME="5" \
-        JWT_SECRET_KEY="" \
-        JWT_ALGORITHM="HS256" \
-        BLOB_CONTAINER_NAME="gecko-videocontainer" \
+        VIDEO_CONTAINER_NAME="gecko-videocontainer" \
         FRAMES_CONTAINER_NAME="gecko-framescontainer" \
         TIMESTAMPS_CONTAINER_NAME="gecko-timestampscontainer" \
         TRANSCRIPT_CONTAINER_NAME="gecko-transcriptcontainer" \
@@ -217,16 +206,6 @@ else
         AZURE_OPENAI_EMBED_MODEL="text-embedding-ada-002" \
         AZURE_OPENAI_WHISPER_ENDPOINT="https://$azureOpenAIName.openai.azure.com/openai/deployments/whisper/audio/translations?api-version2024-06-01" \
         WHISPER_DEPLOYMENT="whisper" \
-        MONGODB_BACKEND_URI="" \
-        MMCT_CACHE_DB="mmct_cache_logger" \
-        MMCT_CACHE_LOG_COLLECTION_NAME="caching_logs" \
-        MMCT_INGESTION_DB="mmct_ingestion_logger" \
-        MMCT_INGESTION_LOG_COLLECTION_NAME="ingestion_logs" \
-        VIDEO_CONTAINER="gecko-videocontainer" \
-        AUDIO_CONTAINER="gecko-audiocontainer" \
-        TRANSCRIPT_CONTAINER="gecko-transcriptcontainer" \
-        TIMESTAMPS_CONTAINER="gecko-timestampscontainer" \
-        FRAMES_CONTAINER="gecko-framescontainer" \
         EVENT_HUB_HOSTNAME="$eventhubName.servicebus.windows.net" \
         QUERY_EVENT_HUB_NAME="query-eventhub" \
         INGESTION_EVENT_HUB_NAME="ingestion-eventhub" \

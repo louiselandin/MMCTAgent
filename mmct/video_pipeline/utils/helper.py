@@ -418,11 +418,11 @@ async def get_media_folder() -> str:
     os.makedirs(media_path, exist_ok=True)
     return media_path
 
-async def remove_file(session_id):
+async def remove_file(video_id):
     try:
         base_dir = await get_media_folder()
 
-        def remove_entity(filename):
+        async def remove_entity(filename):
             local_path = os.path.join(base_dir, filename)
             try:
                 print(f"Trying to remove file: {local_path}")
@@ -433,7 +433,7 @@ async def remove_file(session_id):
             except Exception as e:
                 print(f"Error deleting file {local_path}: {e}")
 
-        def remove_dir(dir_name):
+        async def remove_dir(dir_name):
             local_path = os.path.join(base_dir, dir_name)
             try:
                 print(f"Trying to remove directory: {local_path}")
@@ -442,15 +442,14 @@ async def remove_file(session_id):
             except Exception as e:
                 print(f"Error deleting directory {local_path}: {e}")
                     
-        transcript_blob_name = f"transcript_{session_id}.srt"
-        timestamps_blob_name = f"timestamps_{session_id}.txt"
-        frames_dir_name = f"Frames/{session_id}"
-        summary_blob_name = f"{session_id}.json"
-        remove_entity(transcript_blob_name)
-        remove_entity(timestamps_blob_name)
-        # await remove_entity(frames_blob_name)
-        remove_dir(frames_dir_name)
-        remove_entity(summary_blob_name)
+        transcript_blob_name = f"transcript_{video_id}.srt"
+        timestamps_blob_name = f"timestamps_{video_id}.txt"
+        frames_dir_name = f"Frames/{video_id}"
+        summary_blob_name = f"{video_id}.json"
+        await remove_entity(transcript_blob_name)
+        await remove_entity(timestamps_blob_name)
+        await remove_dir(frames_dir_name)
+        await remove_entity(summary_blob_name)
         
     except Exception as e:
         raise Exception(e)

@@ -5,6 +5,7 @@ from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import VectorizedQuery, VectorFilterMode
 from azure.identity import DefaultAzureCredential
 from azure.core.credentials import AzureKeyCredential
+from loguru import logger
 from mmct.llm_client import LLMClient
 from mmct.video_pipeline.core.ingestion.models import SpeciesVarietyResponse
 from typing_extensions import Annotated
@@ -149,7 +150,7 @@ class VideoSearch:
                 filter_expression.append(f"species eq '{species}'")
             if variety:
                 if variety != "None":
-                    print(F"setting filter for variety: {variety}")
+                    logger.info(f"setting filter for variety: {variety}")
                     filter_expression.append(f"variety eq '{variety}'")
 
             if filter_expression:
@@ -215,7 +216,7 @@ class VideoSearch:
                     scores.append(results["@search.score"])
                     url_ids.append(results["hash_video_id"])
             if not response_url:
-                print("Searching again")
+                logger.info("Searching again")
                 result = await self.search_ai(
                     query, index_name, top_n, min_threshold=min_threshold
                 )

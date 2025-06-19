@@ -1,5 +1,5 @@
 deployInfra:
-  enabled: true
+  enabled: false
   storageAccount: false
   aiSearchService: false
   azureSpeechService: false
@@ -9,8 +9,11 @@ deployInfra:
   eventHubService: false
   azureOpenAIService: false
 
-midentityCreation: 
+envCreation:
   enabled: true
+
+midentityCreation: 
+  enabled: false
 
 buildPushImages:
   enabled: false

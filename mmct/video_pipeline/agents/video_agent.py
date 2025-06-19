@@ -160,7 +160,6 @@ class VideoAgent:
                 
                 filtered_pairs = [
                     (vid, url) for vid, url in zip(self.video_ids["video_id"], self.video_ids["video_url"])
-                    if url.get("YT_URL") not in [None, "None"]
                 ]
                 
 
@@ -169,7 +168,7 @@ class VideoAgent:
                     "video_id": [vid for vid, _ in filtered_pairs],
                     "video_url": [url for _, url in filtered_pairs]
                 }
-                self.logger.info("Filtered out the video ids with None or empty youtube urls")
+                # self.logger.info("Filtered out the video ids with None or empty youtube urls")
                 if len(self.video_ids['video_id'])==0:
                     return {"is_video_unavailable":True}
                 self.logger.info(f"Video ids from AI Search:{self.video_ids['video_id']}")
@@ -255,7 +254,7 @@ if __name__ == "__main__":
         stream = False
         use_critic_agent = True
         top_n = 1
-
+        video_id = ""
         video_agent = VideoAgent(
             query = query,
             index_name = index_name,

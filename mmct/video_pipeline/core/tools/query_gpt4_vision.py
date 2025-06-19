@@ -118,7 +118,6 @@ async def query_gpt4_vision(
                         temperature=payload["temperature"],
                         messages=payload['messages'],
                         top_p=payload['top_p'],
-                        max_tokens=payload["max_tokens"]
                     )
                 return response.choices[0].message.content
             except Exception as e:

@@ -64,6 +64,7 @@ class BlobStorageManager:
         """Upload a local file to blob storage."""
         try:
             logger.info(f"Uploading the local file: {file_path}")
+            logger.info(f"Container Name: {container}\nBlob Name: {blob_name}")
             client = self.service_client.get_blob_client(container=container, blob=blob_name)
             async with aiofiles.open(file_path, "rb") as f:
                 data = await f.read()
@@ -79,6 +80,7 @@ class BlobStorageManager:
     async def upload_base64(self, container: str, blob_name: str, b64_str: str) -> str:
         """Upload base64-encoded data to blob storage."""
         try:
+            logger.info(f"Container Name: {container}\nBlob Name: {blob_name}")
             client = self.service_client.get_blob_client(container=container, blob=blob_name)
             data = base64.b64decode(b64_str)
             await client.upload_blob(data, overwrite=True)
@@ -92,6 +94,7 @@ class BlobStorageManager:
         """Upload a string directly to blob storage without saving to a local file."""
         try:
             logger.info(f"Uploading the file with string content: {content}")
+            logger.info(f"Container Name: {container}\nBlob Name: {blob_name}")
             client = self.service_client.get_blob_client(container=container, blob=blob_name)
             await client.upload_blob(content, overwrite=True)
             logger.info(f"Successfully upload the content to blob name: {blob_name}")

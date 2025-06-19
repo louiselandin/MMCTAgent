@@ -16,35 +16,43 @@ else
     echo "=> Skipping infrastructure deployment...!"
 fi
 
-# 2. Creating managed identity resource
+# 2. create env
+if [[ "$(get_yaml_value "['envCreation']['enabled']")" == "True" ]]; then
+    echo "==> Creating ENV..."
+    bash ./$bashScriptsDirName/02-generate-env.sh
+else
+    echo "=> Skipping ENV Creation...!"
+fi
+
+# 3. Creating managed identity resource
 if [[ "$(get_yaml_value "['midentityCreation']['enabled']")" == "True" ]]; then
     echo "==> Creating Managed Identity Resource..."
-    bash ./$bashScriptsDirName/02-create-managed-identity.sh
+    bash ./$bashScriptsDirName/03-create-managed-identity.sh
 else
     echo "=> Skipping managed identity resource creation...!"
 fi
 
-# 3. building and pushing images
+# 4. building and pushing images
 if [[ "$(get_yaml_value "['buildPushImages']['enabled']")" == "True" ]]; then
     echo "==> Building and pushing images..."
-    bash ./$bashScriptsDirName/03-build-push-images.sh
+    bash ./$bashScriptsDirName/04-build-push-images.sh
 else
     echo "=> Skipping building and pushing of docker images...!"
 fi
 
 
-# 4. deploy app services
+# 5. deploy app services
 if [[ "$(get_yaml_value "['deployAppService']['enabled']")" == "True" ]]; then
     echo "==> Deploying App Services..."
-    bash ./$bashScriptsDirName/04-deploy-app-service.sh
+    bash ./$bashScriptsDirName/05-deploy-app-service.sh
 else
     echo "=> Skipping the deployment of app services...!"
 fi
 
-# 5. deploy container apps
+# 6. deploy container apps
 if [[ "$(get_yaml_value "['deployContainerApps']['enabled']")" == "True" ]]; then
     echo "==> Deploy container apps..."
-    bash ./$bashScriptsDirName/05-deploy-container-app.sh
+    bash ./$bashScriptsDirName/06-deploy-container-app.sh
 else
     echo "=> Skipping the deployment of container apps...!"
 fi

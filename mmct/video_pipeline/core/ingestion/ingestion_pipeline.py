@@ -103,11 +103,11 @@ class IngestionPipeline:
             log_manager.disable_console()
         self.logger = log_manager.get_logger()
         self.hash_video_id = hash_video_id
-        self.video_container = os.getenv("VIDEO_CONTAINER")
-        self.audio_container = os.getenv("AUDIO_CONTAINER")
-        self.transcript_container = os.getenv("TRANSCRIPT_CONTAINER")
-        self.frames_container = os.getenv("FRAMES_CONTAINER")
-        self.timestamps_container = os.getenv("TIMESTAMPS_CONTAINER")
+        self.video_container = os.getenv("VIDEO_CONTAINER_NAME")
+        self.audio_container = os.getenv("AUDIO_CONTAINER_NAME")
+        self.transcript_container = os.getenv("TRANSCRIPT_CONTAINER_NAME")
+        self.frames_container = os.getenv("FRAMES_CONTAINER_NAME")
+        self.timestamps_container = os.getenv("TIMESTAMPS_CONTAINER_NAME")
         self.summary_n_transcript = os.getenv("SUMMARY_CONTAINER_NAME")
         self.video_path = video_path
         _, self.video_extension = os.path.splitext(self.video_path)

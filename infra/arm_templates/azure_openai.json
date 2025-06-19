@@ -11,14 +11,14 @@
                 {
                     "name": "gpt-4o",
                     "version": "2024-08-06",
-                    "capacity": 5,
+                    "capacity": 200,
                     "sku": "GlobalStandard",
                     "upgradeOption": "OnceCurrentVersionExpired"
                 },
                 {
                     "name": "gpt-4o-mini",
                     "version": "2024-07-18",
-                    "capacity": 20,
+                    "capacity": 500,
                     "sku": "GlobalStandard",
                     "upgradeOption": "OnceNewDefaultVersionAvailable"
                 },

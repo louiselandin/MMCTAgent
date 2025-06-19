@@ -10,47 +10,47 @@ base_dir="$script_dir/../arm_templates"
 # set the name and path of the resources
 
 ## 1. set the storage account name
-storageAccountName="ostsa"
+storageAccountName="dostsa"
 storageAccountTemplateFile="$base_dir/storage_account.json"
 
 ## 2. set the ai searh service name
-aiSearchServiceName="ostais"
+aiSearchServiceName="dostais"
 aiSearchServiceTemplateFile="$base_dir/azure_ai_search.json"
 
 ## 3. set the azure speech service name
-azureSpeechServiceName="oststt"
+azureSpeechServiceName="doststt"
 azureSpeechServiceRegion="centralindia"
 azureSpeechServiceTemplateFile="$base_dir/azure_speech_service.json"
 
 ## 4. set the container registry name
-containerRegistryName="ostacr"
+containerRegistryName="dostacr"
 containerRegistryTemplateFile="$base_dir/container_registry.json"
 
 ## 5. set the app service PLAN name
-aspPremiumName="ostaspp"
+aspPremiumName="dostaspp"
 aspPremiumTemplateFile="$base_dir/app_service_plan_premium.json"
 
-aspBasicName="ostaspb"
+aspBasicName="dostaspb"
 aspBasicTemplateFile="$base_dir/app_service_plan_basic.json"
 
 ## 6. set the azure event hub name and topic name
-eventhubName="ostevhub"
+eventhubName="dostevhub"
 queryPipelineTopicName="query-eventhub"
 ingestionPipelineTopicName="ingestion-eventhub"
 eventhubTemplateFile="$base_dir/azure_event_hub.json"
 
 ## 7. Azure Openai
-azureOpenAIName="ostazoai"
+azureOpenAIName="dostazoai"
 azureOpenAITemplateFile="$base_dir/azure_openai.json"
 
 ## 8. Managed Identity Name
-identityName="ostmidentity"
+identityName="dostmidentity"
 
 ## 9. Docker Images, App service and Container Apps Name
 imageTag="1.0"
 
 # name the app service variables
-ingestionProducerAppName="ostingestproducer"
+ingestionProducerAppName="dostingestproducer"
 ingestionProducerTemplateFile="$base_dir/ingestion_app_service.json"
 ingestionProducerImageAndTag="${containerRegistryName}.azurecr.io/ost-ingestion-producer:${imageTag}"
 
