@@ -5,7 +5,7 @@
 
 </div>
 
-# **Project Gecko**
+# **MMCT Agent**
 
 ## **Overview**
 
@@ -147,6 +147,7 @@ Below are the Azure Resources that are required to execute this repository. You 
 | Azure AI Search                | [Document](https://learn.microsoft.com/en-us/azure/search/)        | *Search Index Data Contributor*       |
 | Azure Speech Service           | [Document](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/)        | *Cognitive Services Speech Contributor* or *Cognitive Services Speech User* role.          |
 | Azure App Service [Optional] | [Document](https://learn.microsoft.com/en-us/azure/app-service/)        | NA             |
+| Azure Event Hub [Optional] | [Document](https://learn.microsoft.com/en-us/azure/app-service/)        | Azure Event Hubs Data Owner |    
 | Azure Container Registry [Optional] | [Document](https://learn.microsoft.com/en-us/azure/container-registry/) | *Reader or Contributor* |
 | Application Insights [Optional]          | [Document](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview)        | N/A                                |
 
@@ -179,9 +180,9 @@ mmct_agent = ImageAgent(
     use_critic_agent=use_critic_agent,
     stream=stream,
 )
-response = asyncio.run(mmct_agent.run())
-response = ast.literal_eval(response.content.split("TERMINATE")[0])
-print(response)
+
+response = asyncio.run(mmct_agent())
+print(response.response)
 ```
 
 > MMCT Video Agent

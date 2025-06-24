@@ -84,8 +84,7 @@ mmct_agent = ImageAgent(
     use_critic_agent=use_critic_agent,
     stream=stream,
 )
-response = asyncio.run(mmct_agent.run())
-response = ast.literal_eval(response.content.split("TERMINATE")[0])
-print(response)
+response = asyncio.run(mmct_agent())
+print(response.response)
 ```
 ---

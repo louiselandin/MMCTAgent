@@ -12,6 +12,7 @@ load_dotenv(find_dotenv(),override=True)
 
 class LLMClient:
     def __init__(self, autogen=False, service_provider="azure", embedding=False, stt=False, isAsync = False):
+        self.credential = DefaultAzureCredential()
         self.service_provider = service_provider
         self.isAsync = isAsync
         if autogen:
@@ -41,7 +42,7 @@ class LLMClient:
             ).upper()
             
             if self.azure_managed_identity == "TRUE":
-                azure_ad_token_provider=get_bearer_token_provider(DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default")
+                azure_ad_token_provider=get_bearer_token_provider(self.credential, "https://cognitiveservices.azure.com/.default")
                 if self.isAsync:
                     return AsyncAzureOpenAI(
                                 azure_endpoint=azure_endpoint,
@@ -105,7 +106,7 @@ class LLMClient:
                 "AZURE_OPENAI_MANAGED_IDENTITY", ""
             ).upper()
             if self.azure_managed_identity == "TRUE":
-                azure_ad_token_provider=get_bearer_token_provider(DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default")
+                azure_ad_token_provider=get_bearer_token_provider(self.credential, "https://cognitiveservices.azure.com/.default")
                 if self.isAsync:
                     return AsyncAzureOpenAI(
                                 azure_endpoint=azure_endpoint,
@@ -182,7 +183,7 @@ class LLMClient:
             ).upper()
         if self.azure_managed_identity == "TRUE":
             token_provider = get_bearer_token_provider(
-                DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
+                self.credential, "https://cognitiveservices.azure.com/.default"
             )
             if self.isAsync:
                 return AsyncAzureOpenAI(
@@ -254,7 +255,7 @@ class LLMClient:
             if self.azure_managed_identity == "TRUE":
 
                 token_provider = get_bearer_token_provider(
-                    DefaultAzureCredential(),
+                    self.credential,
                     "https://cognitiveservices.azure.com/.default",
                 )
                 return AzureOpenAIChatCompletionClient(

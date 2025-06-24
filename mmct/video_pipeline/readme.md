@@ -64,6 +64,7 @@ Unlike independent tool selection, **VideoAgent uses a fixed pipeline** of tools
 By default, all tools are used in a coordinated pipeline. You can disable **only** the Azure Computer Vision tool by setting `use_azure_cv_tool=False` during agent initialization.
 
 ---
+
 ## **Usage**
 
 > MMCT Video Ingestion
@@ -108,5 +109,5 @@ video_agent = VideoAgent(
 )
 
 response = asyncio.run(video_agent())
-print(response)
+print(response.response)
 ```
