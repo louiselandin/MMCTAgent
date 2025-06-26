@@ -2,13 +2,13 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "queryProducerAppName": {
+        "mainAppName": {
             "type": "String"
         },
         "serverfarmsASPId": {
             "type": "String"
         },
-        "queryProducerImageAndTag":{
+        "mainAppImageandTag":{
             "type": "string"
         },
         "clientIdOfIdentity": {
@@ -41,7 +41,7 @@
         {
             "type": "Microsoft.Web/sites",
             "apiVersion": "2024-04-01",
-            "name": "[parameters('queryProducerAppName')]",
+            "name": "[parameters('mainAppName')]",
             "location": "Central India",
             "kind": "app,linux",
             "identity": {
@@ -54,12 +54,12 @@
                 "enabled": true,
                 "hostNameSslStates": [
                     {
-                        "name": "[concat(parameters('queryProducerAppName'), '.azurewebsites.net')]",
+                        "name": "[concat(parameters('mainAppName'), '.azurewebsites.net')]",
                         "sslState": "Disabled",
                         "hostType": "Standard"
                     },
                     {
-                        "name": "[concat(parameters('queryProducerAppName'), '.scm.azurewebsites.net')]",
+                        "name": "[concat(parameters('mainAppName'), '.scm.azurewebsites.net')]",
                         "sslState": "Disabled",
                         "hostType": "Repository"
                     }
@@ -101,10 +101,10 @@
         {
             "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
             "apiVersion": "2024-04-01",
-            "name": "[concat(parameters('queryProducerAppName'), '/ftp')]",
+            "name": "[concat(parameters('mainAppName'), '/ftp')]",
             "location": "Central India",
             "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('queryProducerAppName'))]"
+                "[resourceId('Microsoft.Web/sites', parameters('mainAppName'))]"
             ],
             "properties": {
                 "allow": false
@@ -113,10 +113,10 @@
         {
             "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
             "apiVersion": "2024-04-01",
-            "name": "[concat(parameters('queryProducerAppName'), '/scm')]",
+            "name": "[concat(parameters('mainAppName'), '/scm')]",
             "location": "Central India",
             "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('queryProducerAppName'))]"
+                "[resourceId('Microsoft.Web/sites', parameters('mainAppName'))]"
             ],
             "properties": {
                 "allow": false
@@ -125,10 +125,10 @@
         {
             "type": "Microsoft.Web/sites/config",
             "apiVersion": "2024-04-01",
-            "name": "[concat(parameters('queryProducerAppName'), '/web')]",
+            "name": "[concat(parameters('mainAppName'), '/web')]",
             "location": "Central India",
             "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('queryProducerAppName'))]"
+                "[resourceId('Microsoft.Web/sites', parameters('mainAppName'))]"
             ],
             "properties": {
                 "numberOfWorkers": 1,
@@ -208,9 +208,9 @@
         {
             "type": "Microsoft.Web/sites/config",
             "apiVersion": "2024-04-01",
-            "name": "[concat(parameters('queryProducerAppName'), '/appsettings')]",
+            "name": "[concat(parameters('mainAppName'), '/appsettings')]",
             "dependsOn": [
-              "[resourceId('Microsoft.Web/sites', parameters('queryProducerAppName'))]"
+              "[resourceId('Microsoft.Web/sites', parameters('mainAppName'))]"
             ],
             "properties": {
                 "AZURE_CLIENT_ID": "[parameters('clientIdOfIdentity')]",
@@ -254,8 +254,6 @@
                 "OPENAI_STT_API_VERSION": "2024-06-01",
                 "AZURE_OPENAI_MANAGED_IDENTITY": "True",
                 "AZURE_AI_SEARCH_ENDPOINT": "[concat('https://', parameters('aiSearchServiceName'), '.search.windows.net')]",
-                "AZURE_AI_SEARCH_CACHE_ENDPOINT": "[concat('https://', parameters('aiSearchServiceName'), '.search.windows.net')]",
-                "CACHE_INDEX_NAME": "mmct-cache",
                 "AZURE_OPENAI_MODEL_VERSION": "2024-08-06",
                 "AZURE_OPENAI_EMBED_MODEL": "text-embedding-ada-002",
                 "AZURE_OPENAI_WHISPER_ENDPOINT": "[concat('https://', parameters('azureOpenAIName'), '.openai.azure.com/openai/deployments/whisper/audio/translations?api-version2024-06-01')]",
@@ -268,26 +266,26 @@
         {
             "type": "Microsoft.Web/sites/hostNameBindings",
             "apiVersion": "2024-04-01",
-            "name": "[concat(parameters('queryProducerAppName'), '/', parameters('queryProducerAppName'), '.azurewebsites.net')]",
+            "name": "[concat(parameters('mainAppName'), '/', parameters('mainAppName'), '.azurewebsites.net')]",
             "location": "Central India",
             "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('queryProducerAppName'))]"
+                "[resourceId('Microsoft.Web/sites', parameters('mainAppName'))]"
             ],
             "properties": {
-                "siteName": "[parameters('queryProducerAppName')]",
+                "siteName": "[parameters('mainAppName')]",
                 "hostNameType": "Verified"
             }
         },
         {
             "type": "Microsoft.Web/sites/sitecontainers",
             "apiVersion": "2024-04-01",
-            "name": "[concat(parameters('queryProducerAppName'), '/main')]",
+            "name": "[concat(parameters('mainAppName'), '/main')]",
             "location": "Central India",
             "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('queryProducerAppName'))]"
+                "[resourceId('Microsoft.Web/sites', parameters('mainAppName'))]"
             ],
             "properties": {
-                "image": "[parameters('queryProducerImageAndTag')]",
+                "image": "[parameters('mainAppImageandTag')]",
                 "targetPort": "8000",
                 "isMain": true,
                 "authType": "UserAssigned",

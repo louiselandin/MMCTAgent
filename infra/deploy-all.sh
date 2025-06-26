@@ -33,13 +33,12 @@ else
 fi
 
 # 4. building and pushing images
-if [[ "$(get_yaml_value "['buildPushImages']['enabled']")" == "True" ]]; then
+if [[ "$(get_yaml_value "['buildAndPushImagesToACR']['enabled']")" == "True" ]]; then
     echo "==> Building and pushing images..."
-    bash ./$bashScriptsDirName/04-build-push-images.sh
+    bash ./$bashScriptsDirName/04-build-push-docker-images.sh
 else
     echo "=> Skipping building and pushing of docker images...!"
 fi
-
 
 # 5. deploy app services
 if [[ "$(get_yaml_value "['deployAppService']['enabled']")" == "True" ]]; then

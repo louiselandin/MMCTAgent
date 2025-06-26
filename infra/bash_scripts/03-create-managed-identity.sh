@@ -46,6 +46,7 @@ declare -A yaml_to_config_map=(
   ["storageAccount"]="storageAccountName|Storage Blob Data Contributor|Microsoft.Storage/storageAccounts"
   ["azureOpenAIService"]="azureOpenAIName|Cognitive Services OpenAI User|Microsoft.CognitiveServices/accounts"
   ["aiSearchService"]="aiSearchServiceName|Search Index Data Contributor|Microsoft.Search/searchServices"
+  ["aiSearchService"]="aiSearchServiceName|Search Service Contributor|Microsoft.Search/searchServices"
   ["azureSpeechService"]="azureSpeechServiceName|Cognitive Services Speech Contributor|Microsoft.CognitiveServices/accounts"
   ["containerRegistry"]="containerRegistryName|AcrPull|Microsoft.ContainerRegistry/registries"
   ["eventHubService"]="eventhubName|Azure Event Hubs Data Owner|Microsoft.EventHub/namespaces"

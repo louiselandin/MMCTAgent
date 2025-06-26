@@ -38,7 +38,7 @@ Each section in the config file controls a part of the deployment:
 | deployInfra.*             | Deploy selected Azure infra components via ARM   |
 | envCreation.enabled | Create and assign values in the env file     |
 | midentityCreation.enabled | Create and assign roles to a Managed Identity     |
-| buildPushImages.*         | Build and/or push Docker images                   |
+| buildAndPushImagesToACR.*         | Build and/or push Docker images of main app and ingestion consumer    |
 | deployAppService.enabled  | Deploy producer apps to Azure App Service         |
 | deployContainerApps.enabled | Deploy consumer apps to Azure Container Apps  |
 

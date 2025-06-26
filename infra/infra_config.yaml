@@ -1,7 +1,7 @@
 deployInfra:
   enabled: false
   storageAccount: false
-  aiSearchService: false
+  aiSearchService: true
   azureSpeechService: false
   containerRegistry: false
   appServicePremiumPlan: false
@@ -10,18 +10,18 @@ deployInfra:
   azureOpenAIService: false
 
 envCreation:
-  enabled: true
+  enabled: false
 
 midentityCreation: 
   enabled: false
 
-buildPushImages:
+buildAndPushImagesToACR:
   enabled: false
-  buildImages: false
-  pushImages: false
+  buildMainApp: false
+  buildIngestionConsumer: false
 
 deployAppService:
   enabled: false
 
 deployContainerApps:
-  enabled: false
+  enabled: true

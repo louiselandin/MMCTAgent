@@ -17,9 +17,6 @@ serverfarmsASPId=$(az resource show \
 
 echo "✅ Found resource ID: $serverfarmsASPId"
 
-# validating the certain variables whether available or not
-echo "Image and tag: $ingestionProducerImageAndTag"
-
 clientIdOfIdentity=$(az identity show \
   --resource-group $resourceGroup \
   --name $identityName \
@@ -47,23 +44,29 @@ speechResourceId=$(az resource show \
     --output tsv)
 
 # Deploying the app services
-echo "Checking if ingestion app service $ingestionProducerAppName exists...."
+echo "Checking if main app service $mainAppServiceName exists...."
 
 if az resource show \
-    --name "$ingestionProducerAppName" \
+    --name "$mainAppServiceName" \
     --resource-group "$resourceGroup" \
     --resource-type "Microsoft.Web/sites" \
     --query "id" \
     --output tsv >/dev/null 2>&1; then
-    echo "✅ Resource exists: Name = $ingestionProducerAppName"
+    echo "✅ Resource exists: Name = $mainAppServiceName"
 else
     echo "⚙️ Resource does not exist, creating it..."
+    # Optional: check if file exists
+    if [ ! -f "$mainAppTemplateFile" ]; then
+        echo "File not found: $mainAppTemplateFile"
+        exit 1
+    fi
+
     az deployment group create \
       --resource-group $resourceGroup \
-      --template-file $ingestionProducerTemplateFile \
-      --parameters ingestionProducerAppName=$ingestionProducerAppName \
+      --template-file "$mainAppTemplateFileWin" \
+      --parameters mainAppName=$mainAppServiceName \
       serverfarmsASPId=$serverfarmsASPId \
-      ingestionProducerImageAndTag=$ingestionProducerImageAndTag \
+      mainAppImageandTag=$mainAppImageandTag \
       clientIdOfIdentity=$clientIdOfIdentity \
       userAssignedIdentityScope=$userAssignedIdentityScope \
       storageAccountName=$storageAccountName \
@@ -74,33 +77,3 @@ else
       eventhubName=$eventhubName \
       --debug
 fi
-
-
-echo "Checking if query app service $queryProducerAppName exists...."
-
-if az resource show \
-    --name "$queryProducerAppName" \
-    --resource-group "$resourceGroup" \
-    --resource-type "Microsoft.Web/sites" \
-    --query "id" \
-    --output tsv >/dev/null 2>&1; then
-    echo "✅ Resource exists: Name = $queryProducerAppName"
-else
-    echo "⚙️ Resource does not exist, creating it..."
-    az deployment group create \
-      --resource-group $resourceGroup \
-      --template-file $queryProducerTemplateFile \
-      --parameters queryProducerAppName=$queryProducerAppName \
-      serverfarmsASPId=$serverfarmsASPId \
-      queryProducerImageAndTag=$queryProducerImageAndTag \
-      clientIdOfIdentity=$clientIdOfIdentity \
-      userAssignedIdentityScope=$userAssignedIdentityScope \
-      storageAccountName=$storageAccountName \
-      speechResourceId=$speechResourceId \
-      speechRegion=$azureSpeechServiceRegion \
-      azureOpenAIName=$azureOpenAIName \
-      aiSearchServiceName=$aiSearchServiceName \
-      eventhubName=$eventhubName \
-      --debug
-fi
-
