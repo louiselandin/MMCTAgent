@@ -34,6 +34,8 @@ MMCTAgent includes two specialized agents:
 
 #### ImageAgent
 
+![](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/Images%26icons/imageAgent.png)
+
 A reasoning engine tailored for static image understanding.  
 It supports a configurable set of tools via the `ImageQnaTools` enum:
 
@@ -47,7 +49,7 @@ It supports a configurable set of tools via the `ImageQnaTools` enum:
 ---
 
 #### VideoAgent
-
+![](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/Images%26icons/videoAgent.png)
 Optimized for deep video understanding through a structured two-stage pipeline:
 
 1. **Video Retrieval**  
