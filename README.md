@@ -5,7 +5,7 @@
 
 </div>
 
-# [**MMCT Agent**](https://arxiv.org/pdf/2405.18358) | [***Demo Video***]
+# [**MMCT Agent**](https://arxiv.org/pdf/2405.18358) | ***Demo Video***
 <video width="100%" controls>
   <source src="docs/multimedia/videos/Demo_MMCT.mp4" type="video/mp4">
   Your browser does not support the video tag.
