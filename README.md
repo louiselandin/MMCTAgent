@@ -57,7 +57,7 @@ Optimized for deep video understanding through a structured two-stage pipeline:
 
 2. **Video Question Answering**  
 
-![](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/multimedia/videoAgent.jpeg)
+![](docs/multimedia/videoAgent.jpeg)
 
    Applies a fixed toolchain orchestrated by the Planner:
 
