@@ -10,7 +10,7 @@
   <source src="docs/multimedia/videos/Demo_MMCT.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
-![](docs/multimedia/videoPipeline.jpeg)
+
 
 ## **Overview**
 
