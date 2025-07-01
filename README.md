@@ -5,7 +5,7 @@
 
 </div>
 
-# [**MMCT Agent**](https://arxiv.org/pdf/2405.18358) | [***Demo Video***](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/multimedia/videos/Demo_MMCT.mp4)
+# [**MMCT Agent**](https://arxiv.org/pdf/2405.18358) | [***Demo Video***](docs/multimedia/videos/Demo_MMCT.mp4)
 
 ## **Overview**
 
