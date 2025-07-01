@@ -6,7 +6,10 @@
 </div>
 
 # [**MMCT Agent**](https://arxiv.org/pdf/2405.18358) | [***Demo Video***]
-[![Watch the video](https://img.shields.io/badge/Task-Code_Related-blue)](docs/multimedia/videos/Demo_MMCT.mp4)
+<video width="100%" controls>
+  <source src="docs/multimedia/videos/Demo_MMCT.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 ![](docs/multimedia/videoPipeline.jpeg)
 
 ## **Overview**
