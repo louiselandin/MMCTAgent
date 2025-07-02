@@ -5,13 +5,26 @@
 
 </div>
 
-# [**MMCT Agent**](https://arxiv.org/pdf/2405.18358) | [***Demo Video***](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/multimedia/videos/Demo_MMCT.mp4)
+# [**MMCT Agent**](https://arxiv.org/pdf/2405.18358)
+<p align='center'>
+    <a href="docs/multimedia/videos/Demo_MMCT.mp4" style="text-decoration: None;">| Demo Video |</a>
+</p>
+<video width="100%" controls>
+  <source src="docs/multimedia/videos/Demo_MMCT.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 
 ## **Overview**
 
 This repository implements **MMCTAgent**, a novel **multi-modal critical thinking agent** designed to push the boundaries of visual reasoning and deep understanding across **images** and **videos**. Built upon our [research paper](https://arxiv.org/pdf/2405.18358), MMCTAgent combines planning, self-critique, and tool-based reasoning to enhance decision-making in complex multi-modal tasks.
 
-[![](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/multimedia/VideoPipeline.jpeg)](https://arxiv.org/pdf/2405.18358)
+<p align="center">
+  <a href="https://arxiv.org/pdf/2405.18358">
+    <img src="docs/multimedia/mmct-model.png" alt="mmct-model", width="45%" />
+    <img src="docs/multimedia/agent2.png" alt="mmct-workflow", width="45%" />
+  </a>
+</p>
 
 ## **Key Features**
 
@@ -34,7 +47,7 @@ MMCTAgent includes two specialized agents:
 
 #### ImageAgent
 
-![](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/multimedia/imageAgent.jpeg)
+![](docs/multimedia/imageAgent.webp)
 
 A reasoning engine tailored for static image understanding.  
 It supports a configurable set of tools via the `ImageQnaTools` enum:
@@ -49,6 +62,7 @@ It supports a configurable set of tools via the `ImageQnaTools` enum:
 ---
 
 #### VideoAgent
+[![](docs/multimedia/videoPipeline.webp)](https://arxiv.org/pdf/2405.18358)
 
 Optimized for deep video understanding through a structured two-stage pipeline:
 
@@ -57,7 +71,7 @@ Optimized for deep video understanding through a structured two-stage pipeline:
 
 2. **Video Question Answering**  
 
-![](https://github.com/microsoft/MMCTAgent/blob/mmct_autogen/docs/multimedia/videoAgent.jpeg)
+![](docs/multimedia/videoAgent.webp)
 
    Applies a fixed toolchain orchestrated by the Planner:
 
