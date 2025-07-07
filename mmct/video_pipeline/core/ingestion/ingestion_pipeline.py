@@ -4,8 +4,8 @@ from typing import Optional, Annotated
 import os
 from loguru import logger
 import gc
-from mmct.video_pipeline.core.ingestion.transcription.azure_transcription import (
-    AzureTranscription,
+from MMCTAgent.mmct.video_pipeline.core.ingestion.transcription.cloud_transcription import (
+    CloudTranscription,
 )
 from mmct.video_pipeline.core.ingestion.transcription.whisper_transcription import (
     WhisperTranscription,
@@ -26,8 +26,8 @@ from mmct.video_pipeline.core.ingestion.transcription.transcription_services imp
 from mmct.video_pipeline.core.ingestion.semantic_chunking.semantic import (
     SemanticChunking,
 )
-from mmct.video_pipeline.core.ingestion.azure_cv.azure_computer_vision import (
-    AzureComputerVision,
+from mmct.video_pipeline.core.ingestion.computer_vision.computer_vision_services import (
+    ComputerVisionService,
 )
 from mmct.video_pipeline.core.ingestion.merge_summary_n_transcript.merge_visual_summay_with_transcript import (
     MergeVisualSummaryWithTranscript,
@@ -128,7 +128,7 @@ class IngestionPipeline:
                 f"Successfully generated the file hash for the video path: {self.video_path}\nHash Id: {self.hash_id}"
             )
             transcriber = (
-                AzureTranscription(
+                CloudTranscription(
                     video_path=self.video_path,
                     hash_id=self.hash_id,
                     language=self.language,
@@ -208,10 +208,10 @@ class IngestionPipeline:
         """
         try:
             self.logger.info("Ingesting the video the Computer Vision Index")
-            azure_cv = AzureComputerVision(video_id=self.hash_id)
-            await azure_cv.create_index()
+            cv_services = ComputerVisionService(video_id=self.hash_id)
+            await cv_services.create_index()
             self.logger.info("Successfully created the index!")
-            await azure_cv.add_video_to_index(blob_url=self.video_url)
+            await cv_services.add_video_to_index(blob_url=self.video_url)
             self.logger.info("Successfully added video to the Computer Vision Index")
         except Exception as e:
             self.logger.exception(

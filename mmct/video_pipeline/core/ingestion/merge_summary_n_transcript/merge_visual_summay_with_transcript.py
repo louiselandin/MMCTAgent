@@ -92,38 +92,7 @@ class MergeVisualSummaryWithTranscript:
         ) as f:
             await f.write(json_data)
 
-
-    # async def _upload_summaries(self):
-    #     """Upload processed summaries to Azure Blob Storage."""
-    #     # Initialize BlobStorageManager without using async context manager
-    #     blob_manager = BlobStorageManager(account_url=self.AZURE_STORAGE_ACCOUNT_URL)
-    #     blob_name = f"{self.video_id}.json"
-    #     json_data = json.dumps(self.chapters_result, indent=4)
-        
-    #     try:
-    #         # Upload JSON string directly to blob storage without saving to disk
-    #         await blob_manager.upload_string(
-    #             container=self.CONTAINER_NAME,
-    #             blob_name=blob_name,
-    #             content=json_data
-    #         )
-    #         print(f"Summary uploaded to {self.CONTAINER_NAME}/{blob_name}")
-    #     except Exception as e:
-    #         print(f"Error uploading summary: {e}")
-    #         raise Exception(e)
-    #     finally:
-    #         # Manually close the blob manager to release resources
-    #         await blob_manager.close()
-
     async def __call__(self) ->None:
         """Execute the summary extraction and upload process."""
         await self._process_chapters()
         print("Chapters processed & uploaded!")
-
-
-if __name__ == "__main__":
-    chapter_folder_name = "retrerer34"  # id as folder name
-    local_output_file = f"./Processed_test/{chapter_folder_name}.json"
-    chapter_folder_path = f"./{chapter_folder_name}"
-    # processor = process_and_upload(chapter_folder_name=chapter_folder_name, local_output_file=local_output_file, chapter_folder_path=chapter_folder_path)
-    # processor.main()

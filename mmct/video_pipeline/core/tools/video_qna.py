@@ -24,7 +24,7 @@ from mmct.video_pipeline.core.tools.query_summary_n_transcript import (
     query_summary_n_transcript,
 )
 from mmct.video_pipeline.core.tools.query_frame_azure_computer_vision import (
-    query_frames_azure_computer_vision,
+    query_frames_computer_vision,
 )
 from mmct.video_pipeline.core.tools.critic import critic_tool
 from mmct.video_pipeline.prompts_and_description import (
@@ -42,7 +42,7 @@ class VideoQnaTools(Enum):
     """
     GET_SUMMARY_WITH_TRANSCRIPT = (get_summary_n_transcript,)
     QUERY_SUMMARY_TRANSCRIPT = (query_summary_n_transcript,)
-    QUERY_FRAMES_AZURE_COMPUTER_VISION = (query_frames_azure_computer_vision,)
+    QUERY_FRAMES_COMPUTER_VISION = (query_frames_computer_vision,)
     QUERY_GPT_VISION = (query_gpt4_vision,)
 
 
@@ -70,7 +70,7 @@ class VideoQnA:
             This allows fine-grained control over which tools the planner can use. Defaults to:
             - "GET_SUMMARY_WITH_TRANSCRIPT": `get_summary_n_transcript`
             - "QUERY_SUMMARY_TRANSCRIPT": `query_summary_n_transcript`
-            - "QUERY_FRAMES_AZURE_COMPUTER_VISION": `query_frames_azure_computer_vision`
+            - "QUERY_FRAMES_COMPUTER_VISION": `query_frames_computer_vision`
             - "QUERY_GPT_VISION": `query_gpt4_vision`
 
     Note:
@@ -86,7 +86,7 @@ class VideoQnA:
         tools: dict = {
             "GET_SUMMARY_WITH_TRANSCRIPT": get_summary_n_transcript,
             "QUERY_SUMMARY_TRANSCRIPT": query_summary_n_transcript,
-            "QUERY_FRAMES_AZURE_COMPUTER_VISION": query_frames_azure_computer_vision,
+            "QUERY_FRAMES_COMPUTER_VISION": query_frames_computer_vision,
             "QUERY_GPT_VISION": query_gpt4_vision,
         },
     ):
@@ -266,8 +266,8 @@ async def video_qna(
         return await video_qna_instance.run()
     
 if __name__=="__main__":
-    query = "Describe the video and tell me what kind of talk is happening in the video."
-    video_id = "09702a0409f395e3ede3ab098fb3954955947da30f2b6649ac0fa572363c892e"
+    query = ""
+    video_id = ""
     use_azure_cv_tool = False
     use_critic_agent = True
     stream = False
@@ -276,7 +276,7 @@ if __name__=="__main__":
         VideoQnaTools.QUERY_SUMMARY_TRANSCRIPT,
         VideoQnaTools.QUERY_GPT_VISION]
     if use_azure_cv_tool:
-        tools.append(VideoQnaTools.QUERY_FRAMES_AZURE_COMPUTER_VISION)
+        tools.append(VideoQnaTools.QUERY_FRAMES_COMPUTER_VISION)
         
     tools = [str(tool.name) for tool in tools]
     

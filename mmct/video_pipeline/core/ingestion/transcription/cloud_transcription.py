@@ -19,7 +19,7 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), override=True)
 
 
-class AzureTranscription(Transcription):
+class CloudTranscription(Transcription):
     def __init__(self, video_path: str, hash_id: str, language: str = None) -> None:
         super().__init__(video_path=video_path, hash_id=hash_id, language=language)
         self.audio_container = os.getenv("AUDIO_CONTAINER_NAME")
@@ -362,9 +362,9 @@ class AzureTranscription(Transcription):
 
 
 if __name__ == "__main__":
-    video_path = "C:/Users/v-amanpatkar/Downloads/sample_video2.mp4"
-    hash_id = "abcd"
-    transcriber = AzureTranscription(video_path=video_path, hash_id=hash_id)
+    video_path = ""
+    hash_id = ""
+    transcriber = CloudTranscription(video_path=video_path, hash_id=hash_id)
     transcript = asyncio.run(transcriber.run())
     print("Final Transcript:")
     print(transcript)

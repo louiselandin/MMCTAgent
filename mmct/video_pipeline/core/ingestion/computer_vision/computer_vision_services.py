@@ -1,13 +1,13 @@
 import os
 import aiohttp
 import asyncio
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables
 load_dotenv(find_dotenv(), override=True)
 
-class AzureComputerVision:
+class ComputerVisionService:
     def __init__(self, video_id):
         self.AZURECV_ENDPOINT = os.getenv("COMPUTER_VISION_ENDPOINT", None)
         self.video_id  = video_id
@@ -92,7 +92,7 @@ class AzureComputerVision:
                         return None
 
 if __name__=="__main__":
-    blob_url = "https://geckostorageaccount.blob.core.windows.net/gecko-videocontainer/009d738d0b4bb8374830a7894c7f3cd4134c6c89a440bfd656cea819c9bf4565.mp4"
-    azurecv = AzureComputerVision(video_id="test")
+    blob_url = ""
+    azurecv = ComputerVisionService(video_id="")
     resp = asyncio.run(azurecv.add_video_to_index(blob_url=blob_url))
     print(resp)

@@ -67,7 +67,7 @@ class VideoAgent:
                 VideoQnaTools.QUERY_GPT_VISION,
             ]
             if self.use_azure_cv_tool:
-                self.tools.append(VideoQnaTools.QUERY_FRAMES_AZURE_COMPUTER_VISION)
+                self.tools.append(VideoQnaTools.QUERY_FRAMES_COMPUTER_VISION)
                 
             self.tools = [str(tool.name) for tool in self.tools]
             self.use_critic_agent = use_critic_agent
