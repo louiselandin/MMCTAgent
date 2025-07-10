@@ -31,7 +31,7 @@ Shows how to use the `VideoAgent` for video question answering.
 **Features:**
 - Video retrieval from Azure AI Search index
 - Multi-modal analysis using MMCT framework
-- Support for Azure Computer Vision integration
+- Support for Computer Vision integration
 - Configurable critic agent
 
 **Usage:**
@@ -42,7 +42,7 @@ agent = VideoAgent(
     query="what is discussed in the video?",
     index_name="video-index",
     top_n=2,
-    use_azure_cv_tool=False,
+    use_computer_vision_tool=False,
     use_critic_agent=True
 )
 response = await agent()
@@ -55,7 +55,7 @@ Demonstrates the video ingestion pipeline for processing videos.
 - Video transcription using Whisper or Azure Speech-to-Text
 - Frame extraction and chapter generation
 - Azure AI Search indexing
-- Optional Azure Computer Vision integration
+- Optional Computer Vision integration
 
 **Usage:**
 ```python

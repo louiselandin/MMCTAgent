@@ -165,8 +165,8 @@ write_env "SUMMARY_CONTAINER_NAME" "mmct-summary-n-transcript"
 write_env "BLOB_DOWNLOAD_DIR" "media"
 write_env "BLOB_MANAGED_IDENTITY" "true"
 
-# ---------------- Azure Computer Vision Configuration ----------------
-write_comment_in_env "Azure Computer Vision Configuration"
+# ---------------- Computer Vision Configuration ----------------
+write_comment_in_env "Computer Vision Configuration"
 write_env "COMPUTER_VISION_ENDPOINT" ""
 write_env "COMPUTER_VISION_API_VERSION" "2024-02-01"
 write_env "COMPUTER_VISION_KEY" ""
