@@ -50,6 +50,6 @@ class VideoQueryRequest(BaseModel):
     query: str
     index_name: str
     top_n: int = Field(..., ge=1)
-    use_azure_cv_tool: bool
+    use_computer_vision_tool: bool
     use_critic_agent: bool
     stream: bool

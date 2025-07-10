@@ -16,14 +16,14 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.teams import SelectorGroupChat, RoundRobinGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
 from autogen_agentchat.base import TaskResult
-from mmct.video_pipeline.core.tools.get_summary_n_transcript import (
-    get_summary_n_transcript,
+from mmct.video_pipeline.core.tools.get_video_description import (
+    get_video_description,
 )
-from mmct.video_pipeline.core.tools.query_gpt4_vision import query_gpt4_vision
-from mmct.video_pipeline.core.tools.query_summary_n_transcript import (
-    query_summary_n_transcript,
+from mmct.video_pipeline.core.tools.query_vision_llm import query_vision_llm
+from mmct.video_pipeline.core.tools.query_video_description import (
+    query_video_description,
 )
-from mmct.video_pipeline.core.tools.query_frame_azure_computer_vision import (
+from mmct.video_pipeline.core.tools.query_frames_computer_vision import (
     query_frames_computer_vision,
 )
 from mmct.video_pipeline.core.tools.critic import critic_tool
@@ -40,10 +40,10 @@ class VideoQnaTools(Enum):
     """
     Enum class for tools
     """
-    GET_SUMMARY_WITH_TRANSCRIPT = (get_summary_n_transcript,)
-    QUERY_SUMMARY_TRANSCRIPT = (query_summary_n_transcript,)
+    GET_SUMMARY_WITH_TRANSCRIPT = (get_video_description,)
+    QUERY_SUMMARY_TRANSCRIPT = (query_video_description,)
     QUERY_FRAMES_COMPUTER_VISION = (query_frames_computer_vision,)
-    QUERY_GPT_VISION = (query_gpt4_vision,)
+    QUERY_GPT_VISION = (query_vision_llm,)
 
 
 class VideoQnA:
@@ -65,13 +65,13 @@ class VideoQnA:
         query (str): The natural language question to be answered based on the video content.
         video_id (str): The unique identifier of the video, typically retrieved from the AI search index.
         use_critic_agent (bool, optional): Whether to use the critic agent for answer refinement. Defaults to True.
-        use_azure_cv_tool (bool, optional): Whether to use Azure Computer Vision tools for visual content analysis. Defaults to True.
+        use_computer_vision_tool (bool, optional): Whether to use Computer Vision tools for visual content analysis. Defaults to True.
         tools (dict, optional): A dictionary mapping tool names to their corresponding callable functions.
             This allows fine-grained control over which tools the planner can use. Defaults to:
-            - "GET_SUMMARY_WITH_TRANSCRIPT": `get_summary_n_transcript`
-            - "QUERY_SUMMARY_TRANSCRIPT": `query_summary_n_transcript`
+            - "GET_SUMMARY_WITH_TRANSCRIPT": `get_video_description`
+            - "QUERY_SUMMARY_TRANSCRIPT": `query_video_description`
             - "QUERY_FRAMES_COMPUTER_VISION": `query_frames_computer_vision`
-            - "QUERY_GPT_VISION": `query_gpt4_vision`
+            - "QUERY_GPT_VISION": `query_vision_llm`
 
     Note:
         To customize tools, import desired tool functions from `video_pipeline.core.tools.<tool_file>` and
@@ -82,19 +82,19 @@ class VideoQnA:
         query,
         video_id,
         use_critic_agent=True,
-        use_azure_cv_tool=True,
+        use_computer_vision_tool=True,
         tools: dict = {
-            "GET_SUMMARY_WITH_TRANSCRIPT": get_summary_n_transcript,
-            "QUERY_SUMMARY_TRANSCRIPT": query_summary_n_transcript,
+            "GET_SUMMARY_WITH_TRANSCRIPT": get_video_description,
+            "QUERY_SUMMARY_TRANSCRIPT": query_video_description,
             "QUERY_FRAMES_COMPUTER_VISION": query_frames_computer_vision,
-            "QUERY_GPT_VISION": query_gpt4_vision,
+            "QUERY_GPT_VISION": query_vision_llm,
         },
     ):
         self.tools = tools
         self.query = query
         self.video_id = video_id
         self.use_critic_agent = use_critic_agent
-        self.use_azure_cv_tool = use_azure_cv_tool
+        self.use_computer_vision_tool = use_computer_vision_tool
 
         service_provider = os.getenv("LLM_PROVIDER", "azure")
         self.model_client = LLMClient(
@@ -114,7 +114,7 @@ class VideoQnA:
     async def _initialize_agents(self):
         # system prompt for video planner agent
         planner_system_prompt = await get_planner_system_prompt(
-            use_azure_cv_tool=self.use_azure_cv_tool,
+            use_computer_vision_tool=self.use_computer_vision_tool,
             use_critic_agent=self.use_critic_agent,
         )
 
@@ -222,7 +222,7 @@ async def video_qna(
     use_critic_agent: Annotated[
         bool, "Set to True to enable a critic agent that validates the response."
     ] = True,
-    use_azure_cv_tool: Annotated[bool, "whether to use azure cv service or not"] = True,
+    use_computer_vision_tool: Annotated[bool, "whether to use computer vision service or not"] = True,
     stream: Annotated[bool, "Set to True to return the response as a stream."] = False,
     llm_provider=None,
     vision_provider=None
@@ -243,7 +243,7 @@ async def video_qna(
         query=query,
         use_critic_agent=use_critic_agent,
         tools=tools,
-        use_azure_cv_tool=use_azure_cv_tool,
+        use_computer_vision_tool=use_computer_vision_tool,
     )
     if stream:
         response_generator = await video_qna_instance.run_stream()
@@ -270,17 +270,17 @@ async def video_qna(
 if __name__=="__main__":
     query = ""
     video_id = ""
-    use_azure_cv_tool = False
+    use_computer_vision_tool = False
     use_critic_agent = True
     stream = False
     tools = [
         VideoQnaTools.GET_SUMMARY_WITH_TRANSCRIPT,
         VideoQnaTools.QUERY_SUMMARY_TRANSCRIPT,
         VideoQnaTools.QUERY_GPT_VISION]
-    if use_azure_cv_tool:
+    if use_computer_vision_tool:
         tools.append(VideoQnaTools.QUERY_FRAMES_COMPUTER_VISION)
         
     tools = [str(tool.name) for tool in tools]
     
-    result = asyncio.run(video_qna(query=query, video_id=video_id, use_azure_cv_tool=use_azure_cv_tool, use_critic_agent=use_critic_agent, stream=stream ,tools=tools))
+    result = asyncio.run(video_qna(query=query, video_id=video_id, use_computer_vision_tool=use_computer_vision_tool, use_critic_agent=use_critic_agent, stream=stream ,tools=tools))
     print(result)

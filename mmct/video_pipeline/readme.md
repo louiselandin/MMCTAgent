@@ -36,7 +36,7 @@ The **IngestionPipeline** performs comprehensive processing of video file to ext
 4. **Chapter Generation** – Aligns transcript segments with visual frames to form meaningful video chapters.
 5. **Azure Search Indexing** – Saves chapters and metadata to an Azure AI Search index to support retrieval.
 6. **Summary File Generation** – Outputs `summary_n_transcript.json` containing the full transcript and a visual summary.
-7. **(Optional) Azure CV Indexing** – Optionally indexes the video frames using Azure Computer Vision for advanced content-based search.
+7. **(Optional) Azure CV Indexing** – Optionally indexes the video frames using Computer Vision for advanced content-based search.
 
 ## **2. Video Agent**
 
@@ -62,12 +62,12 @@ After retrieval, the agent uses the **Multi-Modal Critical Thinking (MMCT)** fra
 
 Unlike independent tool selection, **VideoAgent uses a fixed pipeline** of tools that work collaboratively during the QA stage. These tools are automatically orchestrated by the planner:
 
-- `GET_SUMMARY_TRANSCRIPT` – Extracts the full transcript and a high-level visual summary of the video.
-- `QUERY_SUMMARY_TRANSCRIPT` – Given a query, this tool identifies **three timestamps** in the transcript that are most relevant.
-- `QUERY_AZURE_COMPUTER_VISION` _(optional)_ – Uses **Azure Computer Vision** to return **three additional timestamps** related to the visual content of the query.
-- `QUERY_GPT4V` – Uses **OpenAI's GPT-4V** to inspect video frames around the identified timestamps and generate a detailed response grounded in both visual and textual understanding.
+- `GET_VIDEO_DESCRIPTION` – Extracts the full transcript and a high-level visual summary of the video.
+- `QUERY_VIDEO_DESCRIPTION` – Given a query, this tool identifies **three timestamps** in the transcript that are most relevant.
+- `QUERY_FRAMES_COMPUTER_VISION` _(optional)_ – Uses **Computer Vision** to return **three additional timestamps** related to the visual content of the query.
+- `QUERY_VISION_LLM` – Uses **vision LLM** to inspect video frames around the identified timestamps and generate a detailed response grounded in both visual and textual understanding.
 
-By default, all tools are used in a coordinated pipeline. You can disable **only** the Azure Computer Vision tool by setting `use_azure_cv_tool=False` during agent initialization.
+By default, all tools are used in a coordinated pipeline. You can disable **only** the Computer Vision tool by setting `use_computer_vision_tool=False` during agent initialization.
 
 ---
 
@@ -101,7 +101,7 @@ from mmct.video_pipeline import VideoAgent
 query = ""
 index_name = ""  # Azure AI Search index name
 top_n = 3  # Number of top results (video ids for MMCT VQnA) to return from the index
-use_azure_cv_tool = False   # flag for selection of Azure Computer Vision Tool
+use_computer_vision_tool = False   # flag for selection of Computer Vision Tool
 use_critic_agent = True     # flag to utilize Critic Agent.
 stream = True               # flag to stream the logs of the Agentic Flow.
 
@@ -109,7 +109,7 @@ video_agent = VideoAgent(
     query=query,
     index_name=index_name,
     top_n=top_n,
-    use_azure_cv_tool=use_azure_cv_tool,
+    use_computer_vision_tool=use_computer_vision_tool,
     use_critic_agent=use_critic_agent,
     stream=stream,
 )

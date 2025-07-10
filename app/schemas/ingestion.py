@@ -5,4 +5,4 @@ class IngestionRequest(BaseModel):
     index_name: str
     transcription_service: TranscriptionServices
     language: Languages
-    use_azure_cv_tool: bool
+    use_computer_vision_tool: bool

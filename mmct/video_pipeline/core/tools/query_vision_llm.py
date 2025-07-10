@@ -18,7 +18,7 @@ service_provider = os.getenv("LLM_PROVIDER", "azure")
 openai_client = LLMClient(service_provider=service_provider, isAsync=True)
 openai_client = openai_client.get_client()
 
-async def query_gpt4_vision(
+async def query_vision_llm(
     query: Annotated[str, "A natural language question about the visual content of the video."], 
     timestamp: Annotated[str, "The timestamp (in %H:%M:%S format) around which to sample frames for visual analysis."], 
     video_id: Annotated[str, "Unique identifier for the video from which frames will be extracted."]
@@ -136,5 +136,5 @@ if __name__ == "__main__":
     query = "What type of content is in the image?"
     timestamps = "00:10:11"
     video_id = "009d738d0b4bb8374830a7894c7f3cd4134c6c89a440bfd656cea819c9bf4565"
-    res = asyncio.run(query_gpt4_vision(query=query, timestamp=timestamps, video_id=video_id))
+    res = asyncio.run(query_vision_llm(query=query, timestamp=timestamps, video_id=video_id))
     print(res)

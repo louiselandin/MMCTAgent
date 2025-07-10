@@ -22,7 +22,7 @@ DESC_query_summary = """This tool allows you to issue a search query over the vi
                             and in the format %H:%M:%S (e.g. 00:08:27, 00:23:56, 01:14:39)
                             """
 
-DESC_query_frames_Computer_Vision = """This tool allows you to issue a natural language search query over the frames of the video using Azure's Computer Vision API to a find a specific moment in the video. 
+DESC_query_frames_computer_vision = """This tool allows you to issue a natural language search query over the frames of the video using Computer Vision API to find a specific moment in the video. 
                                         It is good at OCR, object detection and much more. The output format is similar to the query_transcript tool. It returns comma separated timestamps of the top 3 frames that match with given query. do not repeat the same search query.
                                     """
 

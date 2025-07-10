@@ -32,14 +32,14 @@ class VideoAgent:
 
     This agent first fetches videos relevant to the input query using an Azure Cognitive Search index.
     It then applies the MMCT pipeline on the selected videos to generate answers.
-    Optional modules like Azure Computer Vision and a critic agent can be included in the pipeline.
+    Optional modules like Computer Vision and a critic agent can be included in the pipeline.
 
     Args:
         query (str): The natural language question related to the video content.
         index_name (str): Name of the Azure Cognitive Search index used to retrieve relevant videos.
         top_n (int, optional): Number of top relevant videos to fetch. A higher value increases
             processing time since MMCT runs on each fetched video. Defaults to 1.
-        use_azure_cv_tool (bool, optional): Whether to use Azure Computer Vision for visual content analysis. Defaults to True.
+        use_computer_vision_tool (bool, optional): Whether to use Computer Vision for visual content analysis. Defaults to True.
         use_critic_agent (bool, optional): Whether to use the critic agent as part of the MMCT pipeline for answer validation or refinement. Defaults to True.
         stream (bool, optional): Whether to stream the response output. Defaults to False.
         disable_console_log (bool):
@@ -52,7 +52,7 @@ class VideoAgent:
         index_name: str,
         video_id: Optional[str] = None,
         top_n: int = 1,
-        use_azure_cv_tool: bool = True,
+        use_computer_vision_tool: bool = True,
         use_critic_agent: Optional[bool] = True,
         stream: Optional[bool] = False,
         disable_console_log: Annotated[bool, "boolean flag to disable console logs"] = False
@@ -87,13 +87,13 @@ class VideoAgent:
             self.video_id = video_id
             self.index_name = index_name
             self.top_n = top_n
-            self.use_azure_cv_tool = use_azure_cv_tool
+            self.use_computer_vision_tool = use_computer_vision_tool
             self.tools = [
                 VideoQnaTools.GET_SUMMARY_WITH_TRANSCRIPT,
                 VideoQnaTools.QUERY_SUMMARY_TRANSCRIPT,
                 VideoQnaTools.QUERY_GPT_VISION,
             ]
-            if self.use_azure_cv_tool:
+            if self.use_computer_vision_tool:
                 self.tools.append(VideoQnaTools.QUERY_FRAMES_COMPUTER_VISION)
                 
             self.tools = [str(tool.name) for tool in self.tools]
@@ -257,7 +257,7 @@ class VideoAgent:
                 tools=self.tools,
                 use_critic_agent=self.use_critic_agent,
                 stream=self.stream,
-                use_azure_cv_tool=self.use_azure_cv_tool,
+                use_computer_vision_tool=self.use_computer_vision_tool,
                 llm_provider=self.llm_provider,
                 vision_provider=self.vision_provider
             )
@@ -318,7 +318,7 @@ if __name__ == "__main__":
     async def main():
         query = "What is the neemastram?"
         index_name = "telugu-video-index"
-        use_azure_cv_tool = False
+        use_computer_vision_tool = False
         stream = False
         use_critic_agent = True
         top_n = 1
@@ -329,7 +329,7 @@ if __name__ == "__main__":
             video_id=video_id,
             top_n = top_n,
             use_critic_agent = use_critic_agent,
-            use_azure_cv_tool = use_azure_cv_tool,
+            use_computer_vision_tool = use_computer_vision_tool,
             stream = stream,
         )
         results = await video_agent()

@@ -45,7 +45,7 @@ class IngestionPipeline:
     for use with the VideoAgent system.
 
     This pipeline supports transcription using Azure Speech-to-Text ("azure-stt") or OpenAI Whisper,
-    and it stores the resulting transcripts, frames, audio, metaData and optionally created index corresponsing to the video in azure computer vision.
+    and it stores the resulting transcripts, frames, audio, metaData and optionally created index corresponsing to the video in computer vision.
 
     It also uploads all required video-related files (e.g., original video, transcripts, metadata)
     to an Azure Storage account as part of the ingestion process.
@@ -56,7 +56,7 @@ class IngestionPipeline:
         language (Languages): Language of the video (only Languages Enum), used for transcription and search indexing.
         transcription_service (str): Transcription service to use ("azure-stt" or "whisper"). Defaults to "azure-stt".
         youtube_url (str, optional): Optional YouTube URL associated with the video.
-        use_azure_computer_vision (bool): Whether to use Azure Computer Vision for content analysis. Defaults to True.
+        use_azure_computer_vision (bool): Whether to use Computer Vision for content analysis. Defaults to True.
         disable_console_log (bool):
             Boolean flag to disable console logs. Default set to False.
     Example Usage:
@@ -202,7 +202,7 @@ class IngestionPipeline:
 
     async def _create_ingest_azurecv_index(self):
         """
-        This method created and ingest the video into the azure computer vision indexes.
+        This method created and ingest the video into the computer vision indexes.
         """
         try:
             self.logger.info("Ingesting the video the Computer Vision Index")
@@ -213,7 +213,7 @@ class IngestionPipeline:
             self.logger.info("Successfully added video to the Computer Vision Index")
         except Exception as e:
             self.logger.exception(
-                f"Exception occured while ingesting Video to Azure Computer Vision Index: {e}"
+                f"Exception occured while ingesting Video to Computer Vision Index: {e}"
             )
             raise
 
@@ -383,7 +383,7 @@ class IngestionPipeline:
                 if self.use_azure_computer_vision:
                     await self._create_ingest_azurecv_index()
                     self.logger.info(
-                        "Azure CV Index Created and Ingested to azure computer vision index"
+                        "Computer Vision Index Created and Ingested to computer vision index"
                     )
 
                 await self._merge_visual_summary_with_transcript()

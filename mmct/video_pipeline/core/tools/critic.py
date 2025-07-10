@@ -46,8 +46,8 @@ async def critic_tool(
     video_id: Annotated[
         str, "A unique identifier representing the video being analyzed."
     ],
-    useAzureCV: Annotated[
-        bool, "Flag indicating whether the Azure Computer Vision service was used."
+    use_computer_vision_tool: Annotated[
+        bool, "Flag indicating whether the Computer Vision service was used."
     ],
 ):
     """
@@ -69,7 +69,7 @@ async def critic_tool(
 
     - video_id (str): The identifier of the video under evaluation.
 
-    - useAzureCV (bool): Indicates whether Azure's Computer Vision API was leveraged
+    - use_computer_vision_tool (bool): Indicates whether Computer Vision API was leveraged
       to assist in the analysis or critique process.
     """
     try:
@@ -151,7 +151,7 @@ async def critic_tool(
                         {
                             "type": "text",
                             "text": await get_critic_tool_system_prompt(
-                                useAzureCV=useAzureCV
+                                use_computer_vision_tool=use_computer_vision_tool
                             ),
                         }
                     ],
@@ -197,13 +197,13 @@ if __name__ == "__main__":
     timestamps_predicted = "00:00:11|00:00:15|00:00:22|00:00:27|00:00:35|00:00:47"
     video_id = "009d738d0b4bb8374830a7894c7f3cd4134c6c89a440bfd656cea819c9bf4565"
     logs = "query: what type of content in the video, response:this video contain only the text overlay"
-    useAzureCV = True
+    use_computer_vision_tool = True
     res = asyncio.run(
         critic_tool(
             timestamps_predicted=timestamps_predicted,
             video_id=video_id,
             logs=logs,
-            useAzureCV=useAzureCV,
+            use_computer_vision_tool=use_computer_vision_tool,
         )
     )
     print(res)

@@ -75,10 +75,10 @@ Optimized for deep video understanding through a structured two-stage pipeline:
 
    Applies a fixed toolchain orchestrated by the Planner:
 
-   - `GET_SUMMARY_TRANSCRIPT` – Extracts transcript and visual summary.
-   - `QUERY_SUMMARY_TRANSCRIPT` – Finds top-3 relevant timestamps.
-   - `QUERY_AZURE_COMPUTER_VISION` *(optional)* – Identifies visual cues.
-   - `QUERY_GPT4V` – Combines frame-level visual and textual analysis.
+   - `GET_VIDEO_DESCRIPTION` – Extracts transcript and visual summary.
+   - `QUERY_VIDEO_DESCRIPTION` – Finds top-3 relevant timestamps.
+   - `QUERY_FRAMES_COMPUTER_VISION` *(optional)* – Identifies visual cues.
+   - `QUERY_VISION_LLM` – Combines frame-level visual and textual analysis.
 
 > The Critic agent helps validate and refine answers, improving reasoning depth.
 
@@ -365,7 +365,7 @@ from mmct.video_pipeline import VideoAgent
 query = ""
 index_name = ""  # Azure AI Search index name
 top_n = 3  # Number of top results (video ids for MMCT VQnA) to return from the index
-use_azure_cv_tool = False   # flag for selection of Azure Computer Vision Tool
+use_computer_vision_tool = False   # flag for selection of Azure Computer Vision Tool
 use_critic_agent = True     # flag to utilize Critic Agent.
 stream = True               # flag to stream the logs of the Agentic Flow.
 
@@ -373,7 +373,7 @@ video_agent = VideoAgent(
     query=query,
     index_name=index_name,
     top_n=top_n,
-    use_azure_cv_tool=use_azure_cv_tool,
+    use_computer_vision_tool=use_computer_vision_tool,
     use_critic_agent=use_critic_agent,
     stream=stream,
 )

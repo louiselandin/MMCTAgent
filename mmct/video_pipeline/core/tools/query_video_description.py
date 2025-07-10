@@ -1,5 +1,5 @@
 """
-This tool can do the sementical query on the summary_n_transcript file and provide the top 3 timestamps.
+This tool can do the sementical query on the video description file and provide the top 3 timestamps.
 """
 
 # Importing Libraries
@@ -26,12 +26,12 @@ client_embed = LLMClient(
 client_embed = client_embed.get_client()
 
 
-async def query_summary_n_transcript(
-    summary_query: Annotated[str, "query summary & transcript"],
+async def query_video_description(
+    summary_query: Annotated[str, "query video description"],
     video_id: Annotated[str, "video id"],
 ) -> str:
     try:
-        logger.info("Initialization of query summary and transcript tool")
+        logger.info("Initialization of query video description tool")
         base_dir = await get_media_folder()
         os.makedirs(base_dir, exist_ok=True)
         summary_path = os.path.join(
@@ -208,4 +208,4 @@ async def query_summary_n_transcript(
         return ", ".join(top_3_timestamps)
 
     except Exception as e:
-        raise Exception(f"Error in query_summary_n_transcript tool: {e}")
+        raise Exception(f"Error in query_video_description tool: {e}")
