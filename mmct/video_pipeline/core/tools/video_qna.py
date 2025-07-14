@@ -40,8 +40,8 @@ class VideoQnaTools(Enum):
     """
     Enum class for tools
     """
-    GET_SUMMARY_WITH_TRANSCRIPT = (get_video_description,)
-    QUERY_SUMMARY_TRANSCRIPT = (query_video_description,)
+    GET_VIDEO_DESCRIPTION = (get_video_description,)
+    QUERY_VIDEO_DESCRIPTION = (query_video_description,)
     QUERY_FRAMES_COMPUTER_VISION = (query_frames_computer_vision,)
     QUERY_GPT_VISION = (query_vision_llm,)
 
@@ -68,8 +68,8 @@ class VideoQnA:
         use_computer_vision_tool (bool, optional): Whether to use Computer Vision tools for visual content analysis. Defaults to True.
         tools (dict, optional): A dictionary mapping tool names to their corresponding callable functions.
             This allows fine-grained control over which tools the planner can use. Defaults to:
-            - "GET_SUMMARY_WITH_TRANSCRIPT": `get_video_description`
-            - "QUERY_SUMMARY_TRANSCRIPT": `query_video_description`
+            - "GET_VIDEO_DESCRIPTION": `get_video_description`
+            - "QUERY_VIDEO_DESCRIPTION": `query_video_description`
             - "QUERY_FRAMES_COMPUTER_VISION": `query_frames_computer_vision`
             - "QUERY_GPT_VISION": `query_vision_llm`
 
@@ -84,8 +84,8 @@ class VideoQnA:
         use_critic_agent=True,
         use_computer_vision_tool=True,
         tools: dict = {
-            "GET_SUMMARY_WITH_TRANSCRIPT": get_video_description,
-            "QUERY_SUMMARY_TRANSCRIPT": query_video_description,
+            "GET_VIDEO_DESCRIPTION": get_video_description,
+            "QUERY_VIDEO_DESCRIPTION": query_video_description,
             "QUERY_FRAMES_COMPUTER_VISION": query_frames_computer_vision,
             "QUERY_GPT_VISION": query_vision_llm,
         },
@@ -274,8 +274,8 @@ if __name__=="__main__":
     use_critic_agent = True
     stream = False
     tools = [
-        VideoQnaTools.GET_SUMMARY_WITH_TRANSCRIPT,
-        VideoQnaTools.QUERY_SUMMARY_TRANSCRIPT,
+        VideoQnaTools.GET_VIDEO_DESCRIPTION,
+        VideoQnaTools.QUERY_VIDEO_DESCRIPTION,
         VideoQnaTools.QUERY_GPT_VISION]
     if use_computer_vision_tool:
         tools.append(VideoQnaTools.QUERY_FRAMES_COMPUTER_VISION)

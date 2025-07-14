@@ -79,7 +79,7 @@ else
         TIMESTAMPS_CONTAINER_NAME="mmct-timestampscontainer" \
         TRANSCRIPT_CONTAINER_NAME="mmct-transcriptcontainer" \
         AUDIO_CONTAINER_NAME="mmct-audiocontainer" \
-        SUMMARY_CONTAINER_NAME="mmct-summary-n-transcript" \
+        VIDEO_DESCRIPTION_CONTAINER_NAME="mmct-summary-n-transcript" \
         BLOB_DOWNLOAD_DIR="media" \
         BLOB_MANAGED_IDENTITY="True" \
         BLOB_ACCOUNT_URL="https://$storageAccountName.blob.core.windows.net" \

@@ -89,8 +89,8 @@ class VideoAgent:
             self.top_n = top_n
             self.use_computer_vision_tool = use_computer_vision_tool
             self.tools = [
-                VideoQnaTools.GET_SUMMARY_WITH_TRANSCRIPT,
-                VideoQnaTools.QUERY_SUMMARY_TRANSCRIPT,
+                VideoQnaTools.GET_VIDEO_DESCRIPTION,
+                VideoQnaTools.QUERY_VIDEO_DESCRIPTION,
                 VideoQnaTools.QUERY_GPT_VISION,
             ]
             if self.use_computer_vision_tool:

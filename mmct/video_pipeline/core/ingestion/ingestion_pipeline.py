@@ -44,11 +44,11 @@ class IngestionPipeline:
     IngestionPipeline handles the ingestion, processing, and indexing of a video to prepare it
     for use with the VideoAgent system.
 
-    This pipeline supports transcription using Azure Speech-to-Text ("azure-stt") or OpenAI Whisper,
+    This pipeline supports transcription using Speech-to-Text ("azure-stt") or OpenAI Whisper,
     and it stores the resulting transcripts, frames, audio, metaData and optionally created index corresponsing to the video in computer vision.
 
     It also uploads all required video-related files (e.g., original video, transcripts, metadata)
-    to an Azure Storage account as part of the ingestion process.
+    to an Storage account as part of the ingestion process.
 
     Attributes:
         video_path (str): Path to the video file to be ingested.
@@ -56,7 +56,7 @@ class IngestionPipeline:
         language (Languages): Language of the video (only Languages Enum), used for transcription and search indexing.
         transcription_service (str): Transcription service to use ("azure-stt" or "whisper"). Defaults to "azure-stt".
         youtube_url (str, optional): Optional YouTube URL associated with the video.
-        use_azure_computer_vision (bool): Whether to use Computer Vision for content analysis. Defaults to True.
+        use_computer_vision (bool): Whether to use Computer Vision for content analysis. Defaults to True.
         disable_console_log (bool):
             Boolean flag to disable console logs. Default set to False.
     Example Usage:
@@ -74,7 +74,7 @@ class IngestionPipeline:
     >>>         language=Languages.TELUGU_INDIA,
     >>>         transcription_service=TranscriptionServices.AZURE_STT",
     >>>         youtube_url=None,
-    >>>         use_azure_computer_vision=True
+    >>>         use_computer_vision_tool=True
     >>>     )
     >>>     await ingestion()
     >>>
@@ -89,7 +89,7 @@ class IngestionPipeline:
         language: Languages,
         transcription_service: Optional[str] = TranscriptionServices.AZURE_STT.value,
         youtube_url: Optional[str] = None,
-        use_azure_computer_vision: Optional[bool] = True,
+        use_computer_vision_tool: Optional[bool] = False,
         disable_console_log: Annotated[
             bool, "boolean flag to disable console logs"
         ] = False,
@@ -106,13 +106,13 @@ class IngestionPipeline:
         self.transcript_container = os.getenv("TRANSCRIPT_CONTAINER_NAME")
         self.frames_container = os.getenv("FRAMES_CONTAINER_NAME")
         self.timestamps_container = os.getenv("TIMESTAMPS_CONTAINER_NAME")
-        self.summary_n_transcript = os.getenv("SUMMARY_CONTAINER_NAME")
+        self.video_description_container_name = os.getenv("VIDEO_DESCRIPTION_CONTAINER_NAME")
         self.video_path = video_path
         _, self.video_extension = os.path.splitext(self.video_path)
         self.transcription_service = transcription_service
         self.youtube_url = youtube_url
         self.index_name = index_name
-        self.use_azure_computer_vision = use_azure_computer_vision
+        self.use_computer_vision_tool = use_computer_vision_tool
         self.language = language
         self.local_resources = []
         self.pending_upload_tasks = []
@@ -183,7 +183,7 @@ class IngestionPipeline:
 
             self.blob_urls["transcript_and_summary_file_url"] = (
                 self.blob_manager.get_blob_url(
-                    container=self.summary_n_transcript,
+                    container=self.video_description_container_name,
                     blob_name=f"{self.hash_id}.json",
                 )
             )
@@ -236,7 +236,7 @@ class IngestionPipeline:
             self.logger.info("Successfully merged the visual summary and transcript")
             self.pending_upload_tasks.append(
                 self.blob_manager.upload_file(
-                    container=self.summary_n_transcript,
+                    container=self.video_description_container_name,
                     blob_name=f"{self.hash_id}.json",
                     file_path=os.path.join(
                         await get_media_folder(), f"{self.hash_id}.json"
@@ -380,7 +380,7 @@ class IngestionPipeline:
                 self.logger.info(
                 "Chapter generated for the visual summary and successfully ingested to index!"
                 )
-                if self.use_azure_computer_vision:
+                if self.use_computer_vision_tool:
                     await self._create_ingest_azurecv_index()
                     self.logger.info(
                         "Computer Vision Index Created and Ingested to computer vision index"

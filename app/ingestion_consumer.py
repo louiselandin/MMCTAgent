@@ -45,7 +45,7 @@ async def on_event(partition_context: PartitionContext, event: EventData):
             video_id = payload.get("video_id",None)
             language = payload.get("language", None)
             transcription_service = payload.get("transcription_service", None)
-            use_azure_computer_vision = payload.get("use_azure_computer_vision", None)
+            use_computer_vision_tool = payload.get("use_computer_vision_tool", None)
             video_blob_name = payload.get('video_blob_name', None)
             video_blob_url = payload.get('video_blob_url', None)
             logger.info("Successfully fetched payload from the event hub!")
@@ -64,7 +64,7 @@ async def on_event(partition_context: PartitionContext, event: EventData):
                     index_name= index_name,
                     transcription_service = TranscriptionServices[transcription_service],
                     language=Languages[language],
-                    use_azure_computer_vision=use_azure_computer_vision
+                    use_computer_vision_tool=use_computer_vision_tool
                 )
                 await ingestion()
             else:

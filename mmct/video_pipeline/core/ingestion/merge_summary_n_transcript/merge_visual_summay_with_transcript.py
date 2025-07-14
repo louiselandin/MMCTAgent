@@ -28,7 +28,7 @@ class MergeVisualSummaryWithTranscript:
             full_transcript_string (str): The complete transcript of the video
         """
         self.AZURE_STORAGE_ACCOUNT_URL = os.getenv("BLOB_ACCOUNT_URL")
-        self.CONTAINER_NAME = os.getenv("SUMMARY_CONTAINER_NAME")
+        self.CONTAINER_NAME = os.getenv("VIDEO_DESCRIPTION_CONTAINER_NAME")
         self.merged = {}
         self.transcripts = transcripts
         self.chapters = chapter_responses

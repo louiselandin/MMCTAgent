@@ -161,7 +161,7 @@ write_env "FRAMES_CONTAINER_NAME" "mmct-framescontainer"
 write_env "TIMESTAMPS_CONTAINER_NAME" "mmct-timestampscontainer"
 write_env "TRANSCRIPT_CONTAINER_NAME" "mmct-transcriptcontainer"
 write_env "AUDIO_CONTAINER_NAME" "mmct-audiocontainer"
-write_env "SUMMARY_CONTAINER_NAME" "mmct-summary-n-transcript"
+write_env "VIDEO_DESCRIPTION_CONTAINER_NAME" "mmct-summary-n-transcript"
 write_env "BLOB_DOWNLOAD_DIR" "media"
 write_env "BLOB_MANAGED_IDENTITY" "true"
 

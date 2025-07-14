@@ -66,7 +66,7 @@ pipeline = IngestionPipeline(
     index_name="video-index",
     transcription_service=TranscriptionServices.WHISPER,
     language=Languages.ENGLISH_INDIA,
-    use_azure_computer_vision=False
+    use_computer_vision_tool=False
 )
 await pipeline()
 ```

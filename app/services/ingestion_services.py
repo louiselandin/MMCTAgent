@@ -42,7 +42,7 @@ async def ingest_direct(file: UploadFile, body: dict):
             index_name=body["index_name"],
             transcription_service=body["transcription_service"],
             language=body["language"],
-            use_azure_computer_vision=body["use_computer_vision_tool"]
+            use_computer_vision_tool=body["use_computer_vision_tool"]
         )
         await pipeline()
     except Exception as e:

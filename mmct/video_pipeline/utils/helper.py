@@ -196,10 +196,10 @@ async def load_required_files(session_id):
         )
 
         logger.info(f"summary_blob_name:{summary_blob_name}")
-        logger.info(f"container Name:{os.getenv('SUMMARY_CONTAINER_NAME')}")
+        logger.info(f"container Name:{os.getenv('VIDEO_DESCRIPTION_CONTAINER_NAME')}")
         # save_content(container_name=os.getenv("FRAMES_CONTAINER_NAME"),blob_name=frames_blob_name,list_flag=True)
         save_content(
-            container_name=os.getenv("SUMMARY_CONTAINER_NAME"),
+            container_name=os.getenv("VIDEO_DESCRIPTION_CONTAINER_NAME"),
             blob_name=summary_blob_name,
             list_flag=False,
         )
