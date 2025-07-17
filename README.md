@@ -21,6 +21,12 @@ This repository implements **MMCTAgent**, a novel **multi-modal critical thinkin
 
 <p align="center">
   <a href="https://arxiv.org/pdf/2405.18358">
+    <img src="docs/multimedia/VideoPipeline.webp" alt="Video Pipeline - Main Architecture" width="80%" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://arxiv.org/pdf/2405.18358">
     <img src="docs/multimedia/mmct-model.png" alt="mmct-model", width="45%" />
     <img src="docs/multimedia/agent2.png" alt="mmct-workflow", width="45%" />
   </a>
