@@ -15,6 +15,7 @@ from mmct.video_pipeline.utils.helper import (
     file_upload_to_blob,
     encode_frames_to_base64,
     chunked,
+    remove_file,
 )
 
 from mmct.video_pipeline.core.ingestion.languages import Languages
@@ -30,6 +31,7 @@ from mmct.video_pipeline.core.ingestion.computer_vision.computer_vision_services
 from mmct.video_pipeline.core.ingestion.merge_summary_n_transcript.merge_visual_summay_with_transcript import (
     MergeVisualSummaryWithTranscript,
 )
+from mmct.video_pipeline.core.ingestion.video_compression.video_compression import VideoCompressor
 from mmct.blob_store_manager import BlobStorageManager
 from mmct.video_pipeline.utils.helper import get_media_folder
 from dotenv import load_dotenv, find_dotenv
@@ -118,6 +120,51 @@ class IngestionPipeline:
         self.pending_upload_tasks = []
         self.blob_urls = {}
         self.blob_manager = BlobStorageManager()
+        self.original_video_path = video_path
+
+    async def _check_and_compress_video(self):
+        """
+        Check if video file size exceeds 500 MB and compress if needed.
+        """
+        try:
+            file_size_mb = os.path.getsize(self.video_path) / (1024 * 1024)
+            self.logger.info(f"Video file size: {file_size_mb:.2f} MB")
+            
+            if file_size_mb > 500:
+                self.logger.info(f"Video file size ({file_size_mb:.2f} MB) exceeds 500 MB threshold. Starting compression...")
+                
+                # Create compressed directory in media folder
+                media_folder = await get_media_folder()
+                compressed_dir = os.path.join(media_folder, "compressed")
+                os.makedirs(compressed_dir, exist_ok=True)
+                
+                # Initialize video compressor
+                compressor = VideoCompressor(
+                    input_path=self.video_path,
+                    target_size_mb=500,
+                    output_dir=compressed_dir
+                )
+                
+                # Compress the video
+                compressor.compress()
+                
+                # Update video path to compressed version
+                compressed_path = compressor.output_path
+                if os.path.exists(compressed_path):
+                    self.video_path = compressed_path
+                    self.local_resources.append(compressed_path)  # Track for cleanup
+                    compressed_size_mb = os.path.getsize(compressed_path) / (1024 * 1024)
+                    self.logger.info(f"Video compressed successfully. New size: {compressed_size_mb:.2f} MB")
+                    self.logger.info(f"Using compressed video: {compressed_path}")
+                else:
+                    self.logger.error("Compression failed, compressed file not found")
+                    raise RuntimeError("Video compression failed")
+            else:
+                self.logger.info("Video file size is within acceptable limits, no compression needed")
+                
+        except Exception as e:
+            self.logger.exception(f"Exception occurred during video compression check: {e}")
+            raise
 
     async def get_transcription(self):
         try:
@@ -125,6 +172,16 @@ class IngestionPipeline:
             self.logger.info(
                 f"Successfully generated the file hash for the video path: {self.video_path}\nHash Id: {self.hash_id}"
             )
+            
+            # Rename video file to hash_id.extension
+            _, self.video_extension = os.path.splitext(self.video_path)
+            video_dir = os.path.dirname(self.video_path)
+            new_video_path = os.path.join(video_dir, f"{self.hash_id}{self.video_extension}")
+            
+            if self.video_path != new_video_path:
+                os.rename(self.video_path, new_video_path)
+                self.video_path = new_video_path
+                self.logger.info(f"Video file renamed to: {self.video_path}")
             transcriber = (
                 CloudTranscription(
                     video_path=self.video_path,
@@ -356,6 +413,8 @@ class IngestionPipeline:
 
     async def __call__(self):
         try:
+            await self._check_and_compress_video()  # Check file size and compress if needed
+            self.logger.info("Video compression check completed!")
             await self.get_transcription()  # transcribing the audio from video
             self.logger.info("Transcript Generated!")
             await self._get_frames_timestamps()  # extact, encoding & saving the frames
@@ -399,6 +458,11 @@ class IngestionPipeline:
             )
 
             await self.blob_manager.close()
+            
+            # Clean up local files after successful ingestion
+            await remove_file(self.hash_id)
+            self.logger.info("Local files cleaned up successfully!")
+            
             del self.frames, self.timestamps, self.base64Frames, self.video_url
             gc.collect()
             self.logger.info("Ingestion pipeline ran succesfully!")
@@ -410,7 +474,7 @@ class IngestionPipeline:
 
 
 if __name__ == "__main__":
-    video_path = r"C:\Users\v-amanpatkar\Downloads\mastering_happiness_lesson.mp4"
+    video_path = r"/home/v-amanpatkar/work/edu-content/videos/Lecture 17 - Generative Adversarial Networks Implementation.mp4"
     index = "telangana-video-index-latest-test"
     source_language = Languages.ENGLISH_INDIA
     ingestion = IngestionPipeline(

@@ -468,11 +468,18 @@ async def remove_file(video_id):
         transcript_blob_name = f"transcript_{video_id}.srt"
         timestamps_blob_name = f"timestamps_{video_id}.txt"
         frames_dir_name = f"Frames/{video_id}"
+        compressed_video_file_name = f"Compressed_Videos/{video_id}.mp4"
         summary_blob_name = f"{video_id}.json"
+        audio_wav_name = f"{video_id}.wav"
+        audio_mp3_name = f"{video_id}.mp3"
         await remove_entity(transcript_blob_name)
         await remove_entity(timestamps_blob_name)
         await remove_dir(frames_dir_name)
         await remove_entity(summary_blob_name)
+        await remove_entity(audio_wav_name)
+        await remove_entity(audio_mp3_name)
+        await remove_entity(compressed_video_file_name)
+        print("All files and directories removed successfully!")
         
     except Exception as e:
         raise Exception(e)
