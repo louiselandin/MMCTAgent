@@ -410,9 +410,10 @@ class IngestionPipeline:
 
 
 if __name__ == "__main__":
-    video_path = r"C:\Users\v-amanpatkar\Downloads\mastering_happiness_lesson.mp4"
-    index = "telangana-video-index-latest-test"
-    source_language = Languages.ENGLISH_INDIA
+    # Example usage - replace with your actual values
+    video_path = "path/to/your/video.mp4"
+    index = "your-index-name"
+    source_language = Languages.ENGLISH_US
     ingestion = IngestionPipeline(
         video_path=video_path,
         index_name=index,
