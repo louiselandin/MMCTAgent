@@ -13,7 +13,8 @@ from mmct.video_pipeline.core.ingestion.semantic_chunking.process_transcript imp
     add_empty_intervals,
     format_transcript,
     calculate_time_differences,
-    fetch_frames_based_on_counts
+    fetch_frames_based_on_counts,
+    merge_short_clusters
 )
 from loguru import logger
 from mmct.video_pipeline.core.ingestion.chapter_generator.generate_chapter import ChapterGeneration
@@ -25,7 +26,7 @@ load_dotenv(find_dotenv(),override=True)
 
 
 class SemanticChunking:
-    def __init__(self, hash_id:str, index_name:str, transcript:str,blob_urls,base64Frames)->None:
+    def __init__(self, hash_id:str, index_name:str, transcript:str,blob_urls,base64Frames, frame_stacking_grid_size: int = 4)->None:
         if os.environ.get("MANAGED_IDENTITY", None) is None:
             raise Exception(
                 "MANAGED_IDENTITY requires boolean value for selecting authorization either with Managed Identity or API Key"
@@ -49,13 +50,14 @@ class SemanticChunking:
         self.chapter_transcripts = []
         self.clusters = []
         self.frames_per_cluster = []
-        self.species_data = {'species': 'None', 'Variety_of_species': 'None'}
+        self.subject_data = {'subject': 'None', 'variety_of_subject': 'None'}
         self.upload_doc = []
         self.transcript = transcript
         self.base64Frames = base64Frames
         self.hash_id = hash_id
         self.index_name = index_name
-        self.chapter_generator = ChapterGeneration()
+        self.frame_stacking_grid_size = frame_stacking_grid_size
+        self.chapter_generator = ChapterGeneration(frame_stacking_grid_size=frame_stacking_grid_size)
         self.embed_client = LLMClient(service_provider=os.getenv("LLM_PROVIDER", "azure"), isAsync=True, embedding=True).get_client()
         self.index_client = AISearchClient(
             endpoint=os.getenv("SEARCH_SERVICE_ENDPOINT"),
@@ -108,21 +110,26 @@ class SemanticChunking:
         titled_transcript = "\nVideo Transcript: " + self.transcript
         logger.info(f"Titled transcript:{self.transcript}")
         self.clusters = await format_transcript(transcript=self.transcript)
-        logger.info(f"Clusters:{self.clusters}")
+        logger.info(f"Original clusters count: {len(self.clusters)}")
+        
+        # Merge short duration clusters to improve chapter quality and reduce processing time
+        self.clusters = await merge_short_clusters(self.clusters, min_duration_seconds=30)
+        logger.info(f"Clusters after merging: {len(self.clusters)}")
+        
         if not self.clusters:
             warnings.warn("Formatted Transcript is Empty.", RuntimeWarning)
             logger.error("No clusters generated from transcript - this will result in no documents to index!")
             # Initialize empty attributes to prevent AttributeError
             self.frames_per_cluster = []
-            self.species_data = {'species': 'None', 'Variety_of_species': 'None'}
+            self.subject_data = {'subject': 'None', 'variety_of_subject': 'None'}
             return False
         time_differences = await calculate_time_differences(self.clusters,1)
         
         self.frames_per_cluster = await fetch_frames_based_on_counts(time_differences, self.base64Frames, 1)
         
-        self.species_data = await (self.chapter_generator.species_and_variety(transcript=titled_transcript))
-        self.species_data = eval(self.species_data)
-        logger.info(self.species_data)
+        self.subject_data = await (self.chapter_generator.subject_and_variety(transcript=titled_transcript))
+        self.subject_data = eval(self.subject_data)
+        logger.info(self.subject_data)
         return False
         
         
@@ -139,7 +146,7 @@ class SemanticChunking:
                 try:
                     # Get ChapterCreationResponse instance
                     chapter_response = await self.chapter_generator.Chapters_creation(
-                        transcript = seg, frames = fr, categories = "", species_variety = self.species_data
+                        transcript = seg, frames = fr, categories = "", subject_variety = self.subject_data
                     )
                     logger.info(f"transcript segment:{seg}")
                     logger.info(f"raw chapter:{chapter_response}")
@@ -193,8 +200,8 @@ class SemanticChunking:
                 youtube_url=youtube_url or "None",
                 time=current_time,
                 chapter_transcript=chapter_transcript,
-                species=self.species_data['species'] or "None",
-                variety=self.species_data['Variety_of_species'] or "None",
+                subject=self.subject_data['subject'] or "None",
+                variety=self.subject_data['variety_of_subject'] or "None",
                 blob_audio_url=self.blob_urls['audio_blob_url'].split(".net")[-1][1:] or "None",
                 blob_video_url=video_blob_url.split(".net")[-1][1:] or "None",
                 blob_transcript_file_url=self.blob_urls['transcript_blob_url'].split(".net")[-1][1:] or "None",

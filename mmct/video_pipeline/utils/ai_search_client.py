@@ -363,9 +363,9 @@ class AISearchDocument(BaseModel):
         facetable=True,
         key=False
     )
-    species: str = Field(
+    subject: str = Field(
         ...,
-        description="Species mentioned",
+        description="Main subject or item mentioned",
         searchable=True,
         filterable=True,
         retrievable=True,
@@ -376,7 +376,7 @@ class AISearchDocument(BaseModel):
     )
     variety: str = Field(
         ...,
-        description="Variety of species",
+        description="Variety or type of subject",
         searchable=True,
         filterable=True,
         retrievable=True,

@@ -1,28 +1,34 @@
 import os
 from typing import List, Dict, Any, Union, Optional
 from mmct.llm_client import LLMClient
-from mmct.video_pipeline.core.ingestion.models import ChapterCreationResponse, SpeciesVarietyResponse
+from mmct.video_pipeline.core.ingestion.models import (
+    ChapterCreationResponse,
+    SubjectVarietyResponse,
+)
+from mmct.video_pipeline.utils.helper import create_stacked_frames_base64
 from loguru import logger
 from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables
 load_dotenv(find_dotenv(), override=True)
 
+
 class ChapterGeneration:
-    def __init__(self):
+    def __init__(self, frame_stacking_grid_size=4):
         self.llm_client = LLMClient(
             service_provider=os.getenv("LLM_PROVIDER", "azure"), isAsync=True
         ).get_client()
+        self.frame_stacking_grid_size = frame_stacking_grid_size
 
-    async def species_and_variety(self, transcript:str)->str:
+    async def subject_and_variety(self, transcript: str) -> str:
         """
-        Extract species and variety information from a video transcript using an AI model.
+        Extract subject and variety information from a video transcript using an AI model.
 
         Args:
             transcript (str): The text transcription of the video.
 
         Returns:
-            str: A JSON-formatted string containing species and variety information, or error details.
+            str: A JSON-formatted string containing subject and variety information, or error details.
         """
         try:
             system_prompt = f"""
@@ -30,11 +36,11 @@ class ChapterGeneration:
             Mention only the English name or the text into the response. If the text mentioned in the video is in Hindi or any other language, then convert it into English.
             If any text from transcript is in Hindi or any other language, translate it into English and include it in the response.
             Topics to include in the response:
-            1. Species name talked about in the video.
-            2. Specific variety of species (e.g., IPA 15-06, IPL 203, IPH 15-03) discussed.
-            If the transcript does not contain any species or variety, assign 'None'.
+            1. Main subject or item being discussed in the video.
+            2. Specific variety or type of the subject (e.g., model numbers, versions, specific types) discussed.
+            If the transcript does not contain any specific subject or variety, assign 'None'.
             Ensure the response language is only English, not Hinglish or Hindi or any other language.
-            Include the English-translated name of species and their variety only if certain.
+            Include the English-translated name of subjects and their variety only if certain.
             """
 
             prompt = [
@@ -58,15 +64,15 @@ class ChapterGeneration:
                 ),
                 messages=prompt,
                 temperature=0,
-                response_format=SpeciesVarietyResponse,
+                response_format=SubjectVarietyResponse,
             )
             # Get the parsed Pydantic model from the response
-            parsed_response: SpeciesVarietyResponse = response.choices[0].message.parsed
+            parsed_response: SubjectVarietyResponse = response.choices[0].message.parsed
             # Return the model as JSON string
             return parsed_response.model_dump_json()
         except Exception as e:
-            return SpeciesVarietyResponse(
-            species="None", Variety_of_species="None"
+            return SubjectVarietyResponse(
+                subject="None", variety_of_subject="None"
             ).model_dump_json()
 
     async def Chapters_creation(
@@ -74,7 +80,7 @@ class ChapterGeneration:
         transcript: str,
         frames: List[str],
         categories: str,
-        species_variety: str,
+        subject_variety: str,
     ) -> ChapterCreationResponse:
         """
         Extract chapter information from video frames and transcript.
@@ -83,40 +89,58 @@ class ChapterGeneration:
             transcript (str): The video transcript text
             frames (List[str]): List of Base64 encoded frame images
             categories (str): Category and subcategory information in JSON format
-            species_variety (str): Species and variety information in JSON format
+            subject_variety (str): Subject and variety information in JSON format
 
         Returns:
             ChapterCreationResponse: A Pydantic model instance containing chapter information
         """
         try:
+            # Apply frame stacking if enabled (grid_size > 1)
+            if self.frame_stacking_grid_size > 1 and len(frames) > self.frame_stacking_grid_size:
+                logger.info(f"Applying frame stacking with grid_size={self.frame_stacking_grid_size}")
+                processed_frames = await create_stacked_frames_base64(
+                    frames, 
+                    grid_size=self.frame_stacking_grid_size,
+                    enable_stacking=True
+                )
+            else:
+                processed_frames = frames
+                logger.info("Frame stacking disabled or insufficient frames for stacking")
+            # Add frame stacking information to system prompt if enabled
+            frame_stacking_info = ""
+            if self.frame_stacking_grid_size > 1 and len(processed_frames) < len(frames):
+                frame_stacking_info = f"""
+            NOTE: The video frames have been stacked in grids of {self.frame_stacking_grid_size} frames per image to optimize processing. Each image shows multiple sequential frames arranged in a grid format. Analyze all frames within each grid image to understand the temporal progression of the video content.
+            """
+            
             system_prompt = f""" 
-            You are a VideoAnalyzerGPT. Your job is to find all the details from the video frames of every 2 seconds and from the audio.
-            below is the category and a sub category from which the provided transcript is belongs to in terms of agriculture: 
+            You are a VideoAnalyzerGPT. Your job is to find all the details from the video frames of every 2 seconds and from the audio.{frame_stacking_info}
+            Below is the category and sub-category information for the provided transcript: 
                 Category and sub category: {categories}
-            Below are the main species and the varity of species, If you found another species or varity of species then add the species and varity of species with the comma seprated:
-                species and specific varity of species is {species_variety}.
-            Mention only the english name or the text into the response, if the text is mention in the video is in hindi or any other language then convert them into english language.
-            If any text from anywhere in video frames or transcript is in hindi or any other language then translate them into english and then include it into response.
-            Topics that you have to find and given in the response:
-            1. Topic of the video or a scene theme.
-            2. Species name which is talked in the video.
-            3. Specific Variety of species(e.g. IPA 15-06, IPL 203, etc) on which they are talking.
-            4. A detailed summary which can contain all the information which is talked and analyse from the frames.
-            5. Actions taken into the video.
-            6. text from the images and the scene.
-            Make sure include response languge is only english. not hinglish or hindi or any other language etc.
+            Below are the main subjects and varieties mentioned, if you find other subjects or varieties then add them with comma separation:
+                Subject and specific variety is {subject_variety}.
+            Mention only the English name or text in the response, if text mentioned in the video is in Hindi or any other language then convert them into English.
+            If any text from video frames or transcript is in Hindi or any other language then translate them into English and include it in the response.
+            Topics that you have to find and include in the response:
+            1. Topic of the video or scene theme.
+            2. Main subject or item being discussed in the video.
+            3. Specific variety or type of the subject (e.g. model numbers, versions, types, etc.) that is being discussed.
+            4. A detailed summary which contains all the information discussed and analyzed from the frames.
+            5. Actions taken in the video.
+            6. Text from the images and scenes.
+            Make sure the response language is only English, not Hinglish or Hindi or any other language.
             """
 
             # Handle large inputs by batching only frames, sending full transcript each time
             MAX_FRAMES_PER_BATCH = 20
 
             # Process frames in batches if needed, always sending full transcript
-            if len(frames) > MAX_FRAMES_PER_BATCH:
+            if len(processed_frames) > MAX_FRAMES_PER_BATCH:
 
                 # Split frames into batches
                 frame_batches = [
-                    frames[i : i + MAX_FRAMES_PER_BATCH]
-                    for i in range(0, len(frames), MAX_FRAMES_PER_BATCH)
+                    processed_frames[i : i + MAX_FRAMES_PER_BATCH]
+                    for i in range(0, len(processed_frames), MAX_FRAMES_PER_BATCH)
                 ]
 
                 results = []
@@ -151,12 +175,12 @@ class ChapterGeneration:
                     else:
                         # For subsequent batches, include context from previous results
                         context = f"""You've already analyzed the first {i * MAX_FRAMES_PER_BATCH} frames of this video. 
-                        These are frames {i * MAX_FRAMES_PER_BATCH + 1} to {min((i + 1) * MAX_FRAMES_PER_BATCH, len(frames))}.
+                        These are frames {i * MAX_FRAMES_PER_BATCH + 1} to {min((i + 1) * MAX_FRAMES_PER_BATCH, len(processed_frames))}.
                         
                         Previous analysis results: {previous_analysis}
                         
                         Continue your analysis with these additional frames, focusing on new information not captured in previous analyses.
-                        Maintain consistency with your previous analysis for the same elements (species, variety, etc.) unless new visual evidence contradicts it.
+                        Maintain consistency with your previous analysis for the same elements (subject, variety, etc.) unless new visual evidence contradicts it.
                         Pay special attention to any text, actions, or visual elements that appear in these new frames."""
 
                         batch_prompt = [
@@ -184,7 +208,11 @@ class ChapterGeneration:
 
                     try:
                         batch_response = await self.llm_client.beta.chat.completions.parse(
-                            model=os.getenv("LLM_MODEL_NAME" if os.getenv("LLM_PROVIDER")=="azure" else "OPENAI_MODEL_NAME"),
+                            model=os.getenv(
+                                "LLM_MODEL_NAME"
+                                if os.getenv("LLM_PROVIDER") == "azure"
+                                else "OPENAI_MODEL_NAME"
+                            ),
                             messages=batch_prompt,
                             temperature=0,
                             response_format=ChapterCreationResponse,
@@ -213,7 +241,7 @@ class ChapterGeneration:
                             Create a single comprehensive JSON that combines all the information without redundancy.
                             
                             When integrating information:
-                            1. For factual fields (topic, species, variety), use the most detailed and accurate version
+                            1. For factual fields (topic, subject, variety), use the most detailed and accurate version
                             2. For summary fields, synthesize all information into a cohesive narrative
                             3. For actions and text from scene, include all unique observations across analyses
                             """,
@@ -228,45 +256,57 @@ class ChapterGeneration:
                     ]
 
                     combined_response = await self.llm_client.beta.chat.completions.parse(
-                        model=os.getenv("LLM_MODEL_NAME" if os.getenv("LLM_PROVIDER")=="azure" else "OPENAI_MODEL_NAME"),
+                        model=os.getenv(
+                            "LLM_MODEL_NAME"
+                            if os.getenv("LLM_PROVIDER") == "azure"
+                            else "OPENAI_MODEL_NAME"
+                        ),
                         messages=summary_prompt,
                         temperature=0,
                         response_format=ChapterCreationResponse,
                     )
-                    
+
                     logger.info(f"combined batch response:{combined_response}")
                     final_result: ChapterCreationResponse = combined_response.choices[
                         0
                     ].message.parsed
-                    
+
                 else:
                     final_result: ChapterCreationResponse = results[0]
 
                 # Return ChapterCreationResponse instance directly
                 return final_result
             # Original implementation for smaller inputs
-            prompt = [{"role":"system","content":system_prompt},
-                        {"role":"user","content":[
-                                *map(
-                                        lambda x: {
-                                            "type": "image_url", 
-                                            "image_url": {
-                                                "url": f'data:image/jpg;base64,{x}', 
-                                                "detail": "high"
-                                            }
-                                        }, 
-                                        frames
-                                    ),
-                                {"type": "text", "text": f"The audio transcription is: {transcript}"}
-                            ],
-                        }]
+            prompt = [
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": [
+                        *map(
+                            lambda x: {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpg;base64,{x}",
+                                    "detail": "high",
+                                },
+                            },
+                            processed_frames,
+                        ),
+                        {"type": "text", "text": f"The audio transcription is: {transcript}"},
+                    ],
+                },
+            ]
 
             response = await self.llm_client.beta.chat.completions.parse(
-                    model=os.getenv("LLM_MODEL_NAME" if os.getenv("LLM_PROVIDER")=="azure" else "OPENAI_MODEL_NAME"),
-                    messages=prompt,
-                    temperature=0,
-                    response_format=ChapterCreationResponse
-                )
+                model=os.getenv(
+                    "LLM_MODEL_NAME"
+                    if os.getenv("LLM_PROVIDER") == "azure"
+                    else "OPENAI_MODEL_NAME"
+                ),
+                messages=prompt,
+                temperature=0,
+                response_format=ChapterCreationResponse,
+            )
 
             response_object: ChapterCreationResponse = response.choices[0].message.parsed
 
@@ -275,4 +315,3 @@ class ChapterGeneration:
         except Exception as e:
             logger.exception(f"Error Creating chapters: {e}")
             raise
-    

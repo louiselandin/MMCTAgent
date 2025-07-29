@@ -4,7 +4,7 @@ from azure.identity.aio import DefaultAzureCredential
 from loguru import logger
 from mmct.providers.factory import provider_factory
 from mmct.config.settings import MMCTConfig
-from mmct.video_pipeline.core.ingestion.models import SpeciesVarietyResponse
+from mmct.video_pipeline.core.ingestion.models import SubjectVarietyResponse
 from typing_extensions import Annotated
 from typing import Optional
 import asyncio
@@ -85,15 +85,15 @@ class VideoSearch:
         except Exception as e:
             raise Exception(f"Exception occured while creating embeddings: {e}")
 
-    async def Species_and_variety_query(self, transcript:str)->str:
+    async def Subject_and_variety_query(self, transcript:str)->str:
         """
-        Extract species and variety information from a video transcript using an AI model.
+        Extract subject and variety information from a video transcript using an AI model.
 
         Args:
             transcript (str): The text transcription of the video.
 
         Returns:
-            str: A JSON-formatted string containing species and variety information, or error details.
+            str: A JSON-formatted string containing subject and variety information, or error details.
         """
         try:
             system_prompt = f"""
@@ -101,11 +101,11 @@ class VideoSearch:
             Mention only the English name or the text into the response. If the text mentioned in the video is in Hindi or any other language, then convert it into English.
             If any text from transcript is in Hindi or any other language, translate it into English and include it in the response.
             Topics to include in the response:
-            1. Species name talked about in the video.
-            2. Specific variety of species (e.g., IPA 15-06, IPL 203, IPH 15-03) discussed.
-            If the transcript does not contain any species or variety, assign 'None'.
+            1. Main subject or item being discussed in the video.
+            2. Specific variety or type of the subject (e.g., model numbers, versions, specific types) discussed.
+            If the transcript does not contain any specific subject or variety, assign 'None'.
             Ensure the response language is only English, not Hinglish or Hindi or any other language.
-            Include the English-translated name of species and their variety only if certain.
+            Include the English-translated name of subjects and their variety only if certain.
             """
 
             prompt = [
@@ -124,15 +124,15 @@ class VideoSearch:
             response = await self.llm_provider.chat_completion(
                 messages=prompt,
                 temperature=0,
-                response_format=SpeciesVarietyResponse,
+                response_format=SubjectVarietyResponse,
             )
             # Get the parsed Pydantic model from the response
-            parsed_response: SpeciesVarietyResponse = response["content"]
+            parsed_response: SubjectVarietyResponse = response["content"]
             # Return the model as JSON string
             return parsed_response.model_dump_json()
         except Exception as e:
-            return SpeciesVarietyResponse(
-            species="None", Variety_of_species="None"
+            return SubjectVarietyResponse(
+            subject="None", variety_of_subject="None"
             ).model_dump_json()
 
     async def search_ai(
@@ -141,7 +141,7 @@ class VideoSearch:
         index_name,
         top_n,
         min_threshold,
-        species=None,
+        subject=None,
         variety=None,
     ):
         try:
@@ -152,8 +152,8 @@ class VideoSearch:
             
             # Build filter expression
             filter_expression = []
-            if species:
-                filter_expression.append(f"species eq '{species}'")
+            if subject:
+                filter_expression.append(f"subject eq '{subject}'")
             if variety:
                 if variety != "None":
                     logger.info(f"setting filter for variety: {variety}")
@@ -244,12 +244,12 @@ class VideoSearch:
             response_url = []
             scores = []
             url_ids = []
-            species_response = await self.Species_and_variety_query(query)
-            species_response = eval(species_response)
-            species = species_response.get("species", "None")
-            variety = species_response.get("Variety_of_species", "None")
-            if species == "None":
-                species = None
+            subject_response = await self.Subject_and_variety_query(query)
+            subject_response = eval(subject_response)
+            subject = subject_response.get("subject", "None")
+            variety = subject_response.get("variety_of_subject", "None")
+            if subject == "None":
+                subject = None
             elif variety == "None":
                 variety = None
                 
@@ -258,7 +258,7 @@ class VideoSearch:
                 index_name,
                 top_n=top_n,
                 min_threshold=min_threshold,
-                species=species,
+                subject=subject,
                 variety=variety,
             )
             for results in result:

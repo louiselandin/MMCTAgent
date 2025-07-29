@@ -8,6 +8,7 @@ from loguru import logger
 import os
 import cv2
 import subprocess
+import math
 from io import BytesIO
 from azure.storage.blob import BlobServiceClient
 from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
@@ -146,6 +147,103 @@ async def stack_images_horizontally(frames, type="base64"):
         return new_img
     except Exception as e:
         raise Exception(f"Error while stacking the images horizontally: {e}")
+
+
+async def stack_images_in_grid(frames, grid_size=4, type="base64"):
+    """
+    Stack images in a grid format (e.g., 2x2 for grid_size=4, 3x3 for grid_size=9).
+    
+    Args:
+        frames: List of base64 encoded images or PIL images
+        grid_size: Number of images per grid (4, 9, 16, etc.)
+        type: "base64" or "pil" depending on input format
+    
+    Returns:
+        List of PIL images representing grids
+    """
+    try:
+        if not frames:
+            return []
+        
+        # Convert to PIL images if needed
+        if type == "base64":
+            images = await asyncio.gather(
+                *[decode_base64_to_image(img) for img in frames]
+            )
+        else:
+            images = frames
+        
+        # Calculate grid dimensions (square root for square grid)
+        grid_cols = int(math.sqrt(grid_size))
+        grid_rows = int(math.ceil(grid_size / grid_cols))
+        
+        # Group frames into batches
+        grids = []
+        for i in range(0, len(images), grid_size):
+            batch = images[i:i + grid_size]
+            
+            if not batch:
+                continue
+                
+            # Get dimensions for uniform sizing
+            max_width = max(img.width for img in batch)
+            max_height = max(img.height for img in batch)
+            
+            # Create grid canvas
+            canvas_width = max_width * grid_cols
+            canvas_height = max_height * grid_rows
+            grid_image = Image.new("RGB", (canvas_width, canvas_height), color="white")
+            
+            # Place images in grid
+            for idx, img in enumerate(batch):
+                row = idx // grid_cols
+                col = idx % grid_cols
+                
+                # Resize image to fit grid cell while maintaining aspect ratio
+                img_resized = img.resize((max_width, max_height), Image.Resampling.LANCZOS)
+                
+                x_pos = col * max_width
+                y_pos = row * max_height
+                grid_image.paste(img_resized, (x_pos, y_pos))
+            
+            grids.append(grid_image)
+        
+        return grids
+    except Exception as e:
+        raise Exception(f"Error while stacking images in grid: {e}")
+
+
+async def create_stacked_frames_base64(frames, grid_size=4, enable_stacking=True):
+    """
+    Create stacked frames in base64 format for LLM processing.
+    
+    Args:
+        frames: List of base64 encoded images
+        grid_size: Number of images per grid (default: 4 for 2x2)
+        enable_stacking: Whether to enable frame stacking (default: True)
+    
+    Returns:
+        List of base64 encoded stacked images or original frames
+    """
+    try:
+        if not enable_stacking or len(frames) <= grid_size:
+            return frames
+        
+        # Create grid images
+        grid_images = await stack_images_in_grid(frames, grid_size=grid_size, type="base64")
+        
+        # Convert back to base64
+        stacked_frames = []
+        for grid_img in grid_images:
+            base64_str = await encode_image_to_base64(grid_img)
+            stacked_frames.append(base64_str)
+        
+        logger.info(f"Stacked {len(frames)} frames into {len(stacked_frames)} grid images (grid_size={grid_size})")
+        return stacked_frames
+    except Exception as e:
+        logger.error(f"Error creating stacked frames: {e}")
+        # Fallback to original frames on error
+        return frames
 
 
 async def load_required_files(session_id):
@@ -287,7 +385,6 @@ async def extract_wav_from_video(video_path: str, output_path: str):
         return output_path
     except Exception as e:
         raise Exception(f"Error getting audio from video, error:{e}")
-
 
 async def extract_mp3_from_video(video_path: str, output_path: str):
     """Extracts audio from a video file using FFmpeg."""

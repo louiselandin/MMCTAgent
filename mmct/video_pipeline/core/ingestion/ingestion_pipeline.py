@@ -2,6 +2,7 @@ import asyncio
 import aiofiles
 from typing import Optional, Annotated
 import os
+import shutil
 from loguru import logger
 import gc
 from mmct.video_pipeline.core.ingestion.transcription.cloud_transcription import CloudTranscription
@@ -62,6 +63,8 @@ class IngestionPipeline:
         use_computer_vision (bool): Whether to use Computer Vision for content analysis. Defaults to True.
         disable_console_log (bool):
             Boolean flag to disable console logs. Default set to False.
+        frame_stacking_grid_size (int): Grid size for frame stacking optimization. 
+            Values >1 enable stacking (e.g., 4 = 2x2 grid), 1 disables stacking. Defaults to 4.
     Example Usage:
     ---------------
     >>> from mmct.video_pipeline.ingestion import IngestionPipeline
@@ -97,6 +100,7 @@ class IngestionPipeline:
             bool, "boolean flag to disable console logs"
         ] = False,
         hash_video_id: Annotated[str, "unique Hash Video Id"] = None,
+        frame_stacking_grid_size: Annotated[int, "Grid size for frame stacking (>1 enables stacking, 1 disables)"] = 4,
     ):
         if disable_console_log == False:
             log_manager.enable_console()
@@ -117,6 +121,7 @@ class IngestionPipeline:
         self.index_name = index_name
         self.use_computer_vision_tool = use_computer_vision_tool
         self.language = language
+        self.frame_stacking_grid_size = frame_stacking_grid_size
         self.local_resources = []
         self.pending_upload_tasks = []
         self.blob_urls = {}
@@ -180,15 +185,16 @@ class IngestionPipeline:
                 f"Using existing hash ID for video path: {self.video_path}\nHash Id: {self.hash_id}"
             )
             
-            # Rename video file to hash_id.extension
+            # Copy video file to hash_id.extension (keep original)
             _, self.video_extension = os.path.splitext(self.video_path)
             video_dir = os.path.dirname(self.video_path)
             new_video_path = os.path.join(video_dir, f"{self.hash_id}{self.video_extension}")
             
             if self.video_path != new_video_path:
-                os.rename(self.video_path, new_video_path)
+                shutil.copy2(self.video_path, new_video_path)
                 self.video_path = new_video_path
-                self.logger.info(f"Video file renamed to: {self.video_path}")
+                self.local_resources.append(new_video_path)  # Track renamed copy for cleanup
+                self.logger.info(f"Video file copied to: {self.video_path}")
             transcriber = (
                 CloudTranscription(
                     video_path=self.video_path,
@@ -333,6 +339,7 @@ class IngestionPipeline:
                 transcript=self.transcript,
                 base64Frames=self.base64Frames,
                 blob_urls=self.blob_urls,
+                frame_stacking_grid_size=self.frame_stacking_grid_size,
             )
             self.logger.info(
                 "Successfully created an instance of SemanticChunking class!"
@@ -490,6 +497,20 @@ class IngestionPipeline:
             
             # Clean up local files after successful ingestion
             await remove_file(self.hash_id)
+            
+            # Clean up local resources (including copied video file)
+            for resource_path in self.local_resources:
+                try:
+                    if os.path.exists(resource_path):
+                        if os.path.isfile(resource_path):
+                            os.remove(resource_path)
+                            self.logger.info(f"Removed local file: {resource_path}")
+                        elif os.path.isdir(resource_path):
+                            shutil.rmtree(resource_path)
+                            self.logger.info(f"Removed local directory: {resource_path}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to remove local resource {resource_path}: {e}")
+            
             self.logger.info("Local files cleaned up successfully!")
             
             del self.frames, self.timestamps, self.base64Frames, self.video_url
@@ -504,9 +525,9 @@ class IngestionPipeline:
 
 if __name__ == "__main__":
     # Example usage - replace with your actual values
-    video_path = "path/to/your/video.mp4"
-    index = "your-index-name"
-    source_language = Languages.ENGLISH_US
+    video_path = "/home/v-amanpatkar/work/chapter_generation_opt/MMCTAgent/mmct/video_pipeline/core/ingestion/ingestion_pipeline.py"
+    index = "test_index_a"
+    source_language = Languages.ENGLISH_UNITED_STATES
     ingestion = IngestionPipeline(
         video_path=video_path,
         index_name=index,
