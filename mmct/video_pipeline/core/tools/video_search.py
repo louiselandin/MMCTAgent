@@ -171,7 +171,7 @@ class VideoSearch:
                     vector_filter_mode=VectorFilterMode.PRE_FILTER,
                     top=50,
                     filter=filter_query,
-                    select=["species", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
+                    select=["subject", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
                 )
             else:
                 # Fallback to direct Azure Search implementation
@@ -214,7 +214,7 @@ class VideoSearch:
                         vector_filter_mode=VectorFilterMode.PRE_FILTER,
                         top=50,
                         filter=filter_query,
-                        select=["species", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
+                        select=["subject", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
                     )
                     search_results = [dict(result) async for result in results]
                 finally:
