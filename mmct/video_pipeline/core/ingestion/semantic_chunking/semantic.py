@@ -13,7 +13,8 @@ from mmct.video_pipeline.core.ingestion.semantic_chunking.process_transcript imp
     add_empty_intervals,
     format_transcript,
     calculate_time_differences,
-    fetch_frames_based_on_counts
+    fetch_frames_based_on_counts,
+    merge_short_clusters
 )
 from loguru import logger
 from mmct.video_pipeline.core.ingestion.chapter_generator.generate_chapter import ChapterGeneration
@@ -25,7 +26,7 @@ load_dotenv(find_dotenv(),override=True)
 
 
 class SemanticChunking:
-    def __init__(self, hash_id:str, index_name:str, transcript:str,blob_urls,base64Frames)->None:
+    def __init__(self, hash_id:str, index_name:str, transcript:str,blob_urls,base64Frames, frame_stacking_grid_size: int = 4)->None:
         if os.environ.get("MANAGED_IDENTITY", None) is None:
             raise Exception(
                 "MANAGED_IDENTITY requires boolean value for selecting authorization either with Managed Identity or API Key"
@@ -49,13 +50,14 @@ class SemanticChunking:
         self.chapter_transcripts = []
         self.clusters = []
         self.frames_per_cluster = []
-        self.species_data = {'species': 'None', 'Variety_of_species': 'None'}
+        self.subject_data = {'subject': 'None', 'variety_of_subject': 'None'}
         self.upload_doc = []
         self.transcript = transcript
         self.base64Frames = base64Frames
         self.hash_id = hash_id
         self.index_name = index_name
-        self.chapter_generator = ChapterGeneration()
+        self.frame_stacking_grid_size = frame_stacking_grid_size
+        self.chapter_generator = ChapterGeneration(frame_stacking_grid_size=frame_stacking_grid_size)
         self.embed_client = LLMClient(service_provider=os.getenv("LLM_PROVIDER", "azure"), isAsync=True, embedding=True).get_client()
         self.index_client = AISearchClient(
             endpoint=os.getenv("SEARCH_SERVICE_ENDPOINT"),
@@ -108,21 +110,26 @@ class SemanticChunking:
         titled_transcript = "\nVideo Transcript: " + self.transcript
         logger.info(f"Titled transcript:{self.transcript}")
         self.clusters = await format_transcript(transcript=self.transcript)
-        logger.info(f"Clusters:{self.clusters}")
+        logger.info(f"Original clusters count: {len(self.clusters)}")
+        
+        # Merge short duration clusters to improve chapter quality and reduce processing time
+        self.clusters = await merge_short_clusters(self.clusters, min_duration_seconds=30)
+        logger.info(f"Clusters after merging: {len(self.clusters)}")
+        
         if not self.clusters:
             warnings.warn("Formatted Transcript is Empty.", RuntimeWarning)
             logger.error("No clusters generated from transcript - this will result in no documents to index!")
             # Initialize empty attributes to prevent AttributeError
             self.frames_per_cluster = []
-            self.species_data = {'species': 'None', 'Variety_of_species': 'None'}
+            self.subject_data = {'subject': 'None', 'variety_of_subject': 'None'}
             return False
         time_differences = await calculate_time_differences(self.clusters,1)
         
         self.frames_per_cluster = await fetch_frames_based_on_counts(time_differences, self.base64Frames, 1)
         
-        self.species_data = await (self.chapter_generator.species_and_variety(transcript=titled_transcript))
-        self.species_data = eval(self.species_data)
-        logger.info(self.species_data)
+        self.subject_data = await (self.chapter_generator.subject_and_variety(transcript=titled_transcript))
+        self.subject_data = eval(self.subject_data)
+        logger.info(self.subject_data)
         return False
         
         
@@ -130,48 +137,93 @@ class SemanticChunking:
         if not self.clusters or not self.frames_per_cluster:
             logger.warning("No clusters or frames available for chapter creation")
             return
-            
-        for idx, (seg, fr) in enumerate(zip(self.clusters, self.frames_per_cluster)):
-            attempts = 0
-            max_attempts = 3
-            delay = 1
-            while attempts < max_attempts:
-                try:
-                    # Get ChapterCreationResponse instance
-                    chapter_response = await self.chapter_generator.Chapters_creation(
-                        transcript = seg, frames = fr, categories = "", species_variety = self.species_data
-                    )
-                    logger.info(f"transcript segment:{seg}")
-                    logger.info(f"raw chapter:{chapter_response}")
-                    logger.info(f"string chapter:{chapter_response.__str__(transcript=seg)}")
-                    
-                    if chapter_response is not None:
-                        
-                    
-                        # Store the ChapterCreationResponse object for summary extraction
-                        self.chapter_responses.append(chapter_response)
-                        
-                        # Store the transcript segment
-                        self.chapter_transcripts.append(seg)
-                        
-                        # Create string representation with transcript only for indexing
-                        chapter_response_str = chapter_response.__str__(transcript=seg)
-                        self.chapter_response_strings.append(chapter_response_str)
-                        
-                        logger.info(f"Chapter {idx} response: {chapter_response_str}")
-                        logger.info(f"Chapter {idx} created successfully.")
-                    break
-                except Exception as e:
-                    attempts += 1
-                    if attempts < max_attempts:
-                        await asyncio.sleep(delay)
-                        delay *= 2
-                    else:
-                        logger.info(
-                            f"Chapter {idx} failed after {attempts} attempts."
+        
+        # Create semaphore to limit concurrent Azure OpenAI requests
+        # Adjust this value based on your Azure OpenAI quota and rate limits
+        max_concurrent_requests = 3  # Conservative limit to avoid rate limiting
+        semaphore = asyncio.Semaphore(max_concurrent_requests)
+        
+        async def create_single_chapter(idx, seg, fr):
+            """Create a single chapter with retry logic and rate limiting."""
+            async with semaphore:  # Limit concurrent requests
+                attempts = 0
+                max_attempts = 3
+                delay = 1
+                while attempts < max_attempts:
+                    try:
+                        # Get ChapterCreationResponse instance
+                        chapter_response = await self.chapter_generator.Chapters_creation(
+                            transcript = seg, frames = fr, categories = "", subject_variety = self.subject_data
                         )
-            await asyncio.sleep(2)
-        logger.info("Chapter Generation Completed!")
+                        logger.info(f"Chapter {idx}: transcript segment:{seg}")
+                        logger.info(f"Chapter {idx}: raw chapter:{chapter_response}")
+                        logger.info(f"Chapter {idx}: string chapter:{chapter_response.__str__(transcript=seg)}")
+                        
+                        if chapter_response is not None:
+                            # Create string representation with transcript only for indexing
+                            chapter_response_str = chapter_response.__str__(transcript=seg)
+                            return idx, chapter_response, seg, chapter_response_str
+                        else:
+                            logger.warning(f"Chapter {idx}: No response received, attempting retry {attempts + 1}/{max_attempts}")
+                            attempts += 1
+                            if attempts < max_attempts:
+                                await asyncio.sleep(delay)
+                                delay *= 2
+                            continue
+                            
+                        break
+                    except Exception as e:
+                        # Check if it's a rate limiting error
+                        if "rate limit" in str(e).lower() or "too many requests" in str(e).lower():
+                            logger.warning(f"Chapter {idx}: Rate limit hit, waiting longer before retry...")
+                            await asyncio.sleep(delay * 2)  # Wait longer for rate limit errors
+                        else:
+                            logger.error(f"Chapter {idx}: Error on attempt {attempts + 1}: {e}")
+                        
+                        attempts += 1
+                        if attempts < max_attempts:
+                            await asyncio.sleep(delay)
+                            delay *= 2
+                        else:
+                            logger.error(f"Chapter {idx}: Failed after {max_attempts} attempts")
+                            raise
+                
+                return None  # Failed after all attempts
+        
+        # Create tasks for all chapters to process with controlled concurrency
+        logger.info(f"Creating {len(self.clusters)} chapters with max {max_concurrent_requests} concurrent requests...")
+        tasks = []
+        for idx, (seg, fr) in enumerate(zip(self.clusters, self.frames_per_cluster)):
+            task = create_single_chapter(idx, seg, fr)
+            tasks.append(task)
+        
+        # Execute all chapter creation tasks with controlled concurrency
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results in order to maintain chapter sequence
+        successful_chapters = []
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"Chapter creation failed with exception: {result}")
+                continue
+            elif result is not None:
+                successful_chapters.append(result)
+        
+        # Sort by chapter index to maintain order
+        successful_chapters.sort(key=lambda x: x[0])
+        
+        # Store results in class attributes
+        for idx, chapter_response, seg, chapter_response_str in successful_chapters:
+            # Store the ChapterCreationResponse object for summary extraction
+            self.chapter_responses.append(chapter_response)
+            
+            # Store the transcript segment
+            self.chapter_transcripts.append(seg)
+            
+            # Store string representation for indexing
+            self.chapter_response_strings.append(chapter_response_str)
+        
+        logger.info(f"Chapter Generation Completed! Successfully created {len(self.chapter_responses)} chapters in parallel.")
         
         
     async def _ingest(self, video_blob_url, youtube_url=None):
@@ -193,8 +245,8 @@ class SemanticChunking:
                 youtube_url=youtube_url or "None",
                 time=current_time,
                 chapter_transcript=chapter_transcript,
-                species=self.species_data['species'] or "None",
-                variety=self.species_data['Variety_of_species'] or "None",
+                subject=self.subject_data['subject'] or "None",
+                variety=self.subject_data['variety_of_subject'] or "None",
                 blob_audio_url=self.blob_urls['audio_blob_url'].split(".net")[-1][1:] or "None",
                 blob_video_url=video_blob_url.split(".net")[-1][1:] or "None",
                 blob_transcript_file_url=self.blob_urls['transcript_blob_url'].split(".net")[-1][1:] or "None",

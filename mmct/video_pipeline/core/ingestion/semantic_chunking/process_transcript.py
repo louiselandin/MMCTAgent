@@ -3,6 +3,7 @@ import numpy as np
 import os
 from datetime import datetime
 import math
+from loguru import logger
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv, find_dotenv
 from mmct.llm_client import LLMClient
@@ -10,19 +11,73 @@ from mmct.llm_client import LLMClient
 load_dotenv(find_dotenv(),override=True)
 
 gpt40_client = LLMClient(service_provider=os.getenv("LLM_PROVIDER", "azure"), isAsync=True).get_client()
-async def process_transcript(srt_text: str, SIMILARITY_THRESHOLD=0.7, TIME_LIMIT=50):
+
+# Configurable parameters for semantic chunking optimization
+OPTIMIZED_SIMILARITY_THRESHOLD = 0.4  # Lower = more content grouped together
+SHORT_VIDEO_TIME_LIMIT = 50  # seconds for videos <= 20 minutes
+LONG_VIDEO_TIME_LIMIT = 120  # seconds for videos > 20 minutes
+VIDEO_DURATION_THRESHOLD = 20  # minutes
+
+async def calculate_transcript_duration(srt_text: str) -> float:
+    """
+    Calculate the total duration of the transcript in minutes.
+    
+    Args:
+        srt_text (str): The transcript in SRT format
+        
+    Returns:
+        float: Duration in minutes
+    """
+    try:
+        # Find all timestamp ranges
+        timestamp_matches = re.findall(r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})", srt_text)
+        
+        if not timestamp_matches:
+            return 0.0
+        
+        # Get the last end timestamp
+        last_end_timestamp = timestamp_matches[-1][1]
+        
+        # Parse the timestamp
+        async def parse_timestamp(timestamp):
+            h, m, s, ms = map(int, re.split("[:,]", timestamp))
+            return h * 3600 + m * 60 + s + ms / 1000
+        
+        duration_seconds = await parse_timestamp(last_end_timestamp)
+        return duration_seconds / 60  # Convert to minutes
+        
+    except Exception as e:
+        logger.warning(f"Could not calculate transcript duration: {e}")
+        return 0.0
+
+
+async def process_transcript(srt_text: str, SIMILARITY_THRESHOLD=None, TIME_LIMIT=None):
     """
     Parses an SRT transcript, removes redundant chunks (e.g., "Music" segments), and performs semantic chunking based on content similarity.
 
     Parameters:
         srt_text (str): The transcript in SRT format.
-        gpt40_client (): AsyncAzureOpenAI class instance.
-        SIMILARITY_THRESHOLD (float): Threshold for cosine similarity to determine chunk separation.
-        TIME_LIMIT (int): Maximum duration (in seconds) of each chunk.
+        SIMILARITY_THRESHOLD (float): Threshold for cosine similarity to determine chunk separation (default: 0.4).
+        TIME_LIMIT (int): Maximum duration (in seconds) of each chunk. If None, calculated based on transcript length.
 
     Returns:
         str: A formatted string with time ranges and semantically chunked text.
     """
+    
+    # Use optimized defaults if not provided
+    if SIMILARITY_THRESHOLD is None:
+        SIMILARITY_THRESHOLD = OPTIMIZED_SIMILARITY_THRESHOLD
+    
+    # Calculate dynamic time limit if not provided
+    if TIME_LIMIT is None:
+        transcript_duration_minutes = await calculate_transcript_duration(srt_text)
+        if transcript_duration_minutes <= VIDEO_DURATION_THRESHOLD:
+            TIME_LIMIT = SHORT_VIDEO_TIME_LIMIT
+        else:
+            TIME_LIMIT = LONG_VIDEO_TIME_LIMIT
+        logger.info(f"Transcript duration: {transcript_duration_minutes:.1f} minutes, using TIME_LIMIT: {TIME_LIMIT}s")
+    
+    logger.info(f"Using SIMILARITY_THRESHOLD: {SIMILARITY_THRESHOLD}, TIME_LIMIT: {TIME_LIMIT}s")
 
     async def parse_timestamp(timestamp):
         h, m, s, ms = map(int, re.split("[:,]", timestamp))
@@ -101,10 +156,16 @@ async def process_transcript(srt_text: str, SIMILARITY_THRESHOLD=0.7, TIME_LIMIT
         if current_chunk.strip():
             chunks[f"{await format_timestamp(chunk_start_time)} --> {await format_timestamp(chunk_end_time)}"] = current_chunk.strip()
 
+        # Log optimization results
+        logger.info(f"Semantic chunking complete: {len(sentences)} sentences → {len(chunks)} chunks (reduction: {len(sentences) - len(chunks)} segments)")
+        
         return "\n\n".join(f"{idx+1}\n{time_range}\n{chunk}" for idx, (time_range, chunk) in enumerate(chunks.items()))
 
     sentences, time_stamps, end_times = await parse_transcript(srt_text)
-    return await semantic_chunking(sentences, time_stamps, end_times)
+    logger.info(f"Parsed {len(sentences)} sentences from transcript")
+    
+    result = await semantic_chunking(sentences, time_stamps, end_times)
+    return result
 
 async def add_empty_intervals(transcript_text: str, max_empty_seconds=50):
     async def parse_timecode(timecode):
@@ -250,3 +311,89 @@ async def fetch_frames_based_on_counts(frame_counts, image_frames, seconds_per_f
         start_index = end_index
 
     return frames_per_cluster
+
+
+async def parse_timestamp_to_seconds(timestamp: str) -> float:
+    """
+    Convert timestamp (HH:MM:SS,mmm) to seconds.
+    
+    Args:
+        timestamp (str): Timestamp in format HH:MM:SS,mmm
+        
+    Returns:
+        float: Timestamp in seconds
+    """
+    h, m, s, ms = map(int, re.split("[:,]", timestamp))
+    return h * 3600 + m * 60 + s + ms / 1000
+
+
+async def merge_short_clusters(clusters: list, min_duration_seconds: int = 30) -> list:
+    """
+    Merge clusters shorter than min_duration with subsequent clusters to improve chapter quality.
+    
+    Args:
+        clusters (list): List of cluster strings with format "HH:MM:SS,mmm --> HH:MM:SS,mmm text"
+        min_duration_seconds (int): Minimum duration threshold for clusters
+        
+    Returns:
+        list: List of merged clusters
+    """
+    if not clusters:
+        return clusters
+        
+    async def extract_cluster_info(cluster_text: str):
+        """Extract duration, start time, end time, and text from cluster."""
+        timestamps = re.findall(r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})", cluster_text)
+        if timestamps:
+            start, end = timestamps[0]
+            start_sec = await parse_timestamp_to_seconds(start)
+            end_sec = await parse_timestamp_to_seconds(end)
+            duration = end_sec - start_sec
+            
+            # Extract text content (everything after the timestamp)
+            text_match = re.search(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\s+(.*)", cluster_text)
+            text = text_match.group(1).strip() if text_match else ""
+            
+            return duration, start, end, text
+        return 0, None, None, ""
+    
+    async def format_timestamp_from_seconds(seconds: float) -> str:
+        """Convert seconds back to timestamp format."""
+        ms = int((seconds % 1) * 1000)
+        seconds = int(seconds)
+        h = seconds // 3600
+        m = (seconds % 3600) // 60
+        s = seconds % 60
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+    
+    merged_clusters = []
+    i = 0
+    
+    logger.info(f"Starting cluster merging. Original clusters: {len(clusters)}, Min duration: {min_duration_seconds}s")
+    
+    while i < len(clusters):
+        current_cluster = clusters[i]
+        duration, start_time, end_time, text = await extract_cluster_info(current_cluster)
+        
+        # If cluster is too short and we have a next cluster, try to merge
+        if duration < min_duration_seconds and i + 1 < len(clusters):
+            next_cluster = clusters[i + 1]
+            next_duration, next_start, next_end, next_text = await extract_cluster_info(next_cluster)
+            
+            # Create merged cluster with combined text and extended time range
+            if start_time and next_end:
+                merged_text = f"{start_time} --> {next_end} {text} {next_text}".strip()
+                merged_clusters.append(merged_text)
+                logger.debug(f"Merged cluster: {duration:.1f}s + {next_duration:.1f}s = {duration + next_duration:.1f}s")
+                i += 2  # Skip next cluster since we merged it
+            else:
+                # If timestamp parsing failed, keep original
+                merged_clusters.append(current_cluster)
+                i += 1
+        else:
+            # Cluster is long enough or it's the last one, keep as is
+            merged_clusters.append(current_cluster)
+            i += 1
+    
+    logger.info(f"Cluster merging complete. Final clusters: {len(merged_clusters)} (reduced by {len(clusters) - len(merged_clusters)})")
+    return merged_clusters

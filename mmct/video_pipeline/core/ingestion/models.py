@@ -13,21 +13,21 @@ class TranslationResponse(BaseModel):
     )
 
 
-class SpeciesVarietyResponse(BaseModel):
-    """Pydantic model for validating responses from the species_and_variety function.
+class SubjectVarietyResponse(BaseModel):
+    """Pydantic model for validating responses from the subject_and_variety function.
     
-    This model represents the structured output from species and variety identification analysis,
-    extracting key agricultural information from video transcripts.
+    This model represents the structured output from subject and variety identification analysis,
+    extracting key subject matter information from video transcripts.
     """
     model_config = ConfigDict(extra="forbid")
     
-    species: str = Field(
+    subject: str = Field(
         ..., 
-        description="Name of the species which is talked about in the video, or 'None' if not found"
+        description="Name of the main subject or item which is talked about in the video, or 'None' if not found"
     )
-    Variety_of_species: str = Field(
+    variety_of_subject: str = Field(
         ..., 
-        description="Name of the variety of species mentioned in the video, or 'None' if not found"
+        description="Name of the specific variety or type of subject mentioned in the video, or 'None' if not found"
     )
 
 
@@ -41,7 +41,7 @@ class ChapterCreationResponse(BaseModel):
     
     Topic_of_video: str = Field(
         ..., 
-        description="Topic related to agriculture that is discussed in the video"
+        description="Main topic or theme that is discussed in the video"
     )
     Category: str = Field(
         ..., 
@@ -51,13 +51,13 @@ class ChapterCreationResponse(BaseModel):
         None, 
         description="The sub-category the video content belongs to"
     )
-    species: Optional[str] = Field(
+    subject: Optional[str] = Field(
         None, 
-        description="Name of the species discussed in the video"
+        description="Name of the main subject or item discussed in the video"
     )
-    Variety_of_species: Optional[str] = Field(
+    variety_of_subject: Optional[str] = Field(
         None, 
-        description="Specific variety of species mentioned in the video"
+        description="Specific variety or type of subject mentioned in the video"
     )
     Detailed_summary: str = Field(
         ..., 
@@ -93,11 +93,11 @@ class ChapterCreationResponse(BaseModel):
             text += f", specifically in the {self.Sub_category} subcategory"
         text += ". "
         
-        # Add species information if available
-        if self.species and self.species.lower() != "none":
-            text += f"The video discusses the {self.species} species"
-            if self.Variety_of_species and self.Variety_of_species.lower() != "none":
-                text += f", particularly the {self.Variety_of_species} variety"
+        # Add subject information if available
+        if self.subject and self.subject.lower() != "none":
+            text += f"The video discusses {self.subject}"
+            if self.variety_of_subject and self.variety_of_subject.lower() != "none":
+                text += f", particularly the {self.variety_of_subject} variety"
             text += ". "
         
         # Add the detailed summary

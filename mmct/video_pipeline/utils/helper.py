@@ -8,6 +8,7 @@ from loguru import logger
 import os
 import cv2
 import subprocess
+import math
 from io import BytesIO
 from azure.storage.blob import BlobServiceClient
 from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
@@ -148,6 +149,103 @@ async def stack_images_horizontally(frames, type="base64"):
         raise Exception(f"Error while stacking the images horizontally: {e}")
 
 
+async def stack_images_in_grid(frames, grid_size=4, type="base64"):
+    """
+    Stack images in a grid format (e.g., 2x2 for grid_size=4, 3x3 for grid_size=9).
+    
+    Args:
+        frames: List of base64 encoded images or PIL images
+        grid_size: Number of images per grid (4, 9, 16, etc.)
+        type: "base64" or "pil" depending on input format
+    
+    Returns:
+        List of PIL images representing grids
+    """
+    try:
+        if not frames:
+            return []
+        
+        # Convert to PIL images if needed
+        if type == "base64":
+            images = await asyncio.gather(
+                *[decode_base64_to_image(img) for img in frames]
+            )
+        else:
+            images = frames
+        
+        # Calculate grid dimensions (square root for square grid)
+        grid_cols = int(math.sqrt(grid_size))
+        grid_rows = int(math.ceil(grid_size / grid_cols))
+        
+        # Group frames into batches
+        grids = []
+        for i in range(0, len(images), grid_size):
+            batch = images[i:i + grid_size]
+            
+            if not batch:
+                continue
+                
+            # Get dimensions for uniform sizing
+            max_width = max(img.width for img in batch)
+            max_height = max(img.height for img in batch)
+            
+            # Create grid canvas
+            canvas_width = max_width * grid_cols
+            canvas_height = max_height * grid_rows
+            grid_image = Image.new("RGB", (canvas_width, canvas_height), color="white")
+            
+            # Place images in grid
+            for idx, img in enumerate(batch):
+                row = idx // grid_cols
+                col = idx % grid_cols
+                
+                # Resize image to fit grid cell while maintaining aspect ratio
+                img_resized = img.resize((max_width, max_height), Image.Resampling.LANCZOS)
+                
+                x_pos = col * max_width
+                y_pos = row * max_height
+                grid_image.paste(img_resized, (x_pos, y_pos))
+            
+            grids.append(grid_image)
+        
+        return grids
+    except Exception as e:
+        raise Exception(f"Error while stacking images in grid: {e}")
+
+
+async def create_stacked_frames_base64(frames, grid_size=4, enable_stacking=True):
+    """
+    Create stacked frames in base64 format for LLM processing.
+    
+    Args:
+        frames: List of base64 encoded images
+        grid_size: Number of images per grid (default: 4 for 2x2)
+        enable_stacking: Whether to enable frame stacking (default: True)
+    
+    Returns:
+        List of base64 encoded stacked images or original frames
+    """
+    try:
+        if not enable_stacking or len(frames) <= grid_size:
+            return frames
+        
+        # Create grid images
+        grid_images = await stack_images_in_grid(frames, grid_size=grid_size, type="base64")
+        
+        # Convert back to base64
+        stacked_frames = []
+        for grid_img in grid_images:
+            base64_str = await encode_image_to_base64(grid_img)
+            stacked_frames.append(base64_str)
+        
+        logger.info(f"Stacked {len(frames)} frames into {len(stacked_frames)} grid images (grid_size={grid_size})")
+        return stacked_frames
+    except Exception as e:
+        logger.error(f"Error creating stacked frames: {e}")
+        # Fallback to original frames on error
+        return frames
+
+
 async def load_required_files(session_id):
     try:
         base_dir = await get_media_folder()
@@ -156,7 +254,7 @@ async def load_required_files(session_id):
             exist_ok=True,
         )
 
-        def save_content(container_name, blob_name, list_flag=True):
+        def save_content(container_name, blob_name, list_flag=True, binary_data=False):
             blob_client = blob_service_client.get_blob_client(
                 container=container_name, blob=blob_name
             )
@@ -164,17 +262,22 @@ async def load_required_files(session_id):
             # Download the blob's content
             blob_data = blob_client.download_blob().read()
 
-            if list_flag == True:
-                # Decode the byte data to string and split into lines
-                content = blob_data.decode("utf-8").splitlines()
-                with open(local_path, "w", encoding="utf-8") as f:
-                    f.write("\n".join(content))
+            if binary_data:
+                # For binary content like video
+                with open(local_path, "wb") as f:
+                    f.write(blob_data)
             else:
-                content = blob_data.decode("utf-8")
-                with open(local_path, "w", encoding="utf-8") as f:
-                    f.write(content)
+                if list_flag == True:
+                    # Decode the byte data to string and split into lines
+                    content = blob_data.decode("utf-8").splitlines()
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write("\n".join(content))
+                else:
+                    content = blob_data.decode("utf-8")
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(content)
 
-        transcript_blob_name = f"transcript_{session_id}.srt"
+        video_blob_name = f"{session_id}.mp4"
         timestamps_blob_name = f"timestamps_{session_id}.txt"
         # frames_blob_name = f"frames_{session_id}.txt"
         summary_blob_name = f"{session_id}.json"
@@ -185,11 +288,11 @@ async def load_required_files(session_id):
         blob_service_client = BlobServiceClient(
             os.getenv("BLOB_ACCOUNT_URL"), credential
         )
-        # save_content(
-        #     container_name=os.getenv("TRANSCRIPT_CONTAINER_NAME"),
-        #     blob_name=transcript_blob_name,
-        #     list_flag=False,
-        # )
+        save_content(
+            container_name=os.getenv("VIDEO_CONTAINER_NAME"),
+            blob_name=video_blob_name,
+            binary_data=True
+        )
         save_content(
             container_name=os.getenv("TIMESTAMPS_CONTAINER_NAME"),
             blob_name=timestamps_blob_name,
@@ -208,7 +311,7 @@ async def load_required_files(session_id):
         raise Exception(f"Error downloading files from azure storage:{e}")
 
 
-async def get_file_hash(file_path, hash_algorithm="sha256"):
+async def get_file_hash(file_path, hash_algorithm="sha256", suffix=""):
     try:
         """Generate a hash for a file asynchronously."""
         hash_func = hashlib.new(hash_algorithm)
@@ -222,8 +325,8 @@ async def get_file_hash(file_path, hash_algorithm="sha256"):
                     break
                 hash_func.update(chunk)
 
-        hash_id =  hash_func.hexdigest()
-        logger.info("Hash Id Generated")
+        hash_id = hash_func.hexdigest() + suffix
+        logger.info(f"Hash Id Generated: {hash_id}")
         return hash_id
     except Exception as e:
         logger.exception(f"Error generating hash id of video, error:{e}")
@@ -288,7 +391,6 @@ async def extract_wav_from_video(video_path: str, output_path: str):
     except Exception as e:
         raise Exception(f"Error getting audio from video, error:{e}")
 
-
 async def extract_mp3_from_video(video_path: str, output_path: str):
     """Extracts audio from a video file using FFmpeg."""
     try:
@@ -310,6 +412,101 @@ async def extract_mp3_from_video(video_path: str, output_path: str):
             )
     except Exception as e:
         raise Exception(f"Error extracting audio from {video_path}: {e}")
+
+
+async def get_video_duration(video_path: str) -> float:
+    """
+    Get video duration in seconds using ffprobe.
+    Args:
+        video_path (str): Path to the video file.
+    Returns:
+        float: Video duration in seconds.
+    """
+    try:
+        cmd = [
+            'ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1', video_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        duration = float(result.stdout.strip())
+        logger.info(f"Video duration: {duration:.2f} seconds ({duration/60:.2f} minutes)")
+        return duration
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error getting video duration: {e}")
+        raise
+    except ValueError as e:
+        logger.error(f"Error parsing video duration: {e}")
+        raise
+
+
+async def split_video_if_needed(video_path: str) -> tuple[list[str], list[str]]:
+    """
+    Split video into two parts if duration >= 30 minutes.
+    Args:
+        video_path (str): Path to the input video file.
+    Returns:
+        tuple: (list of video paths, list of corresponding hash suffixes)
+               - If split: ([part_A_path, part_B_path], ['', 'B'])
+               - If not split: ([original_path], [''])
+    """
+    try:
+        duration = await get_video_duration(video_path)
+        
+        # Check if video is >= 30 minutes (1800 seconds)
+        if duration < 1800:
+            logger.info("Video duration is less than 30 minutes, no splitting needed")
+            return [video_path], ['']
+        
+        logger.info("Video duration is >= 30 minutes, splitting video into two parts")
+        
+        # Get video file info
+        video_name, video_ext = os.path.splitext(os.path.basename(video_path))
+        
+        # Get media folder for output paths
+        media_folder = await get_media_folder()
+        
+        # Calculate split point (half duration)
+        split_point = duration / 2
+        
+        # Define output paths in media folder
+        part_a_path = os.path.join(media_folder, f"{video_name}_part_A{video_ext}")
+        part_b_path = os.path.join(media_folder, f"{video_name}_part_B{video_ext}")
+        
+        # Split video using ffmpeg
+        # Part A: from start to middle
+        cmd_a = [
+            'ffmpeg', '-i', video_path, '-t', str(split_point), 
+            '-c', 'copy', '-avoid_negative_ts', 'make_zero', part_a_path, '-y'
+        ]
+        
+        # Part B: from middle to end
+        cmd_b = [
+            'ffmpeg', '-i', video_path, '-ss', str(split_point), 
+            '-c', 'copy', '-avoid_negative_ts', 'make_zero', part_b_path, '-y'
+        ]
+        
+        logger.info("Splitting video into Part A...")
+        result_a = subprocess.run(cmd_a, capture_output=True, text=True, check=True)
+        logger.info(f"Part A created successfully: {part_a_path}")
+        
+        logger.info("Splitting video into Part B...")
+        result_b = subprocess.run(cmd_b, capture_output=True, text=True, check=True)
+        logger.info(f"Part B created successfully: {part_b_path}")
+        
+        # Verify both parts were created
+        if not os.path.exists(part_a_path) or not os.path.exists(part_b_path):
+            raise RuntimeError("Video splitting failed - output files not found")
+        
+        logger.info(f"Video successfully split into:\n  Part A: {part_a_path}\n  Part B: {part_b_path}")
+        return [part_a_path, part_b_path], ['', 'B']
+        
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error splitting video: {e}")
+        logger.error(f"ffmpeg stderr: {e.stderr}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during video splitting: {e}")
+        raise
 
 
 async def extract_frames(video_path, fps=1):
@@ -470,6 +667,7 @@ async def remove_file(video_id):
         timestamps_blob_name = f"timestamps_{video_id}.txt"
         frames_dir_name = f"Frames/{video_id}"
         compressed_video_file_name = f"Compressed_Videos/{video_id}.mp4"
+        video = f"{video_id}.mp4"
         summary_blob_name = f"{video_id}.json"
         audio_wav_name = f"{video_id}.wav"
         audio_mp3_name = f"{video_id}.mp3"
@@ -480,6 +678,7 @@ async def remove_file(video_id):
         await remove_entity(audio_wav_name)
         await remove_entity(audio_mp3_name)
         await remove_entity(compressed_video_file_name)
+        await remove_entity(video)
         print("All files and directories removed successfully!")
         
     except Exception as e:
