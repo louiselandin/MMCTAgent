@@ -10,6 +10,8 @@ import cv2
 import subprocess
 import math
 from io import BytesIO
+from datetime import timedelta
+from typing import Dict
 from azure.storage.blob import BlobServiceClient
 from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
 from azure.identity import get_bearer_token_provider, DefaultAzureCredential
@@ -920,3 +922,73 @@ def split_transcript_by_segments(srt_content: str, segment_count: int = 2) -> li
         transcript_chunks.append(chunk_srt.strip())
     
     return transcript_chunks
+
+def seconds_to_hms(duration_seconds):
+    """
+    Convert duration in seconds to HH:MM:SS format string.
+    
+    Args:
+        duration_seconds (int or float): Duration in seconds to convert
+        
+    Returns:
+        str: Time formatted as "HH:MM:SS" with leading zeros
+        
+    Example:
+        >>> seconds_to_hms(3661)
+        '01:01:01'
+        >>> seconds_to_hms(7200)
+        '02:00:00'
+        >>> seconds_to_hms(45)
+        '00:00:45'
+    """
+    # Convert to integer to handle float inputs
+    duration_seconds = int(duration_seconds)
+    
+    # Calculate hours, minutes, and seconds
+    hours = duration_seconds // 3600
+    remaining_seconds = duration_seconds % 3600
+    minutes = remaining_seconds // 60
+    seconds = remaining_seconds % 60
+    
+    # Format with leading zeros
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+def _hhmmss_to_timedelta(ts: str) -> timedelta:
+    h, m, s = map(int, ts.split(":"))
+    return timedelta(hours=h, minutes=m, seconds=s)
+
+def _timedelta_to_hhmmss(td: timedelta) -> str:
+    total = int(td.total_seconds())
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+async def _offset_single_source(src, duration_dict: Dict[str, str]) -> None:
+    """
+    Offset timestamps for one VideoSourceInfo if it is a Part-B video.
+    Mutates `src.timestamps` in-place.
+    """
+    vid = src.video_id
+    if len(vid) != 65 or not vid.endswith("B"):
+        return  # Part-A or normal video → nothing to do
+
+    base_id = vid[:-1]                       # strip trailing 'B'
+    base_dur_str = duration_dict.get(base_id)
+    if not base_dur_str:                     # unknown duration → skip
+        return
+
+    base_td = _hhmmss_to_timedelta(base_dur_str)
+    src.timestamps = [
+        _timedelta_to_hhmmss(_hhmmss_to_timedelta(t) + base_td)
+        for t in src.timestamps  # ✅ Fixed: use dot notation
+    ]
+
+
+async def offset_all_sources_in_response(resp, duration_dict: Dict[str, str]) -> None:
+    """
+    Iterate over every VideoSourceInfo in `resp.content.source`
+    and apply `_offset_single_source` concurrently.
+    """
+    await asyncio.gather(
+    *(_offset_single_source(src, duration_dict) for src in resp['content'].source)
+    )

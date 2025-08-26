@@ -11,6 +11,7 @@ from mmct.video_pipeline.prompts_and_description import (
     VIDEO_AGENT_SYSTEM_PROMPT,
     VideoAgentResponse,
 )
+from mmct.video_pipeline.utils.helper import load_required_files, seconds_to_hms, offset_all_sources_in_response
 from mmct.video_pipeline.utils.helper import remove_file, get_media_folder, get_video_duration
 from mmct.providers.factory import provider_factory
 from mmct.config.settings import MMCTConfig
@@ -52,6 +53,7 @@ class VideoAgent:
         query: str,
         index_name: str,
         video_id: Optional[str] = None,
+        youtube_url: Optional[str] = None,
         top_n: int = 1,
         use_computer_vision_tool: bool = True,
         use_critic_agent: Optional[bool] = True,
@@ -89,6 +91,7 @@ class VideoAgent:
             self.index_name = index_name
             self.top_n = top_n
             self.use_computer_vision_tool = use_computer_vision_tool
+            self.youtube_url = youtube_url
             self.tools = [
                 VideoQnaTools.GET_VIDEO_DESCRIPTION,
                 VideoQnaTools.QUERY_VIDEO_DESCRIPTION,
@@ -182,6 +185,15 @@ class VideoAgent:
                     hash_video_id=self.video_id, 
                     index_name=self.index_name
                 )
+            elif self.youtube_url:
+                self.video_ids = await video_search(
+                    query=self.query, 
+                    index_name=self.index_name, 
+                    top_n=self.top_n,
+                    youtube_url=self.youtube_url,
+                    search_provider=self.search_provider
+                )
+                logger.info("Successfully retrieved the results from the video search filtered on youtube url")
             else:
                 logger.info("Performing video search for the provided input")
                 self.video_ids = await video_search(
@@ -197,6 +209,8 @@ class VideoAgent:
                     (vid, url) for vid, url in zip(self.video_ids["video_id"], self.video_ids["video_url"])
                     if vid and url
                 ]
+
+                logger.info(f"Fetched video ids: {filtered_pairs}")
                 
                 # Rebuild the self.video_ids structure
                 self.video_ids = {
@@ -211,7 +225,7 @@ class VideoAgent:
                 logger.info(f"Video IDs from AI Search: {self.video_ids['video_id']}")
 
 
-            logger.info("Accumulating the MMCT Video Agent Response for retrieved Video IDs")
+            logger.info(f"Accumulating the MMCT Video Agent Response for retrieved Video IDs: {self.video_ids['video_id']}")
             self.session_results = await asyncio.gather(
                 *(
                     self._fetch_mmct_response(video_id)
@@ -222,13 +236,31 @@ class VideoAgent:
 
             #creating video duration dictioanary
             video_duration = {}
+            video_ids = self.video_ids["video_id"]
             base_dir = await get_media_folder()
+            # First get list of part B videos
+            part_b_videos = [video_id for video_id in self.video_ids["video_id"] if len(video_id) == 65 and video_id.endswith('B')]
+            # Then download the part A videos of those part B videos if they doesn't exist in the media folder
+            for part_b_video in part_b_videos:
+                
+                part_a_video = part_b_video[:-1]
+                video_ids.append(part_a_video)
+                part_a_video_path = os.path.join(base_dir, part_a_video + ".mp4")
+                if not os.path.exists(part_a_video_path):
+                    logger.info(f"Downloading the part A video for part B video: {part_b_video}")
+                    await load_required_files(session_id=part_a_video)
+
+            self.video_ids['video_id']=list(set(video_ids))
+            logger.info(f"Final list of video ids after adding part A videos: {self.video_ids['video_id']}")
+    
+
             for video_id in self.video_ids["video_id"]:
                 if len(video_id) == 64:
                     video_path = os.path.join(base_dir, video_id + ".mp4")
-                    video_duration[video_id] = await get_video_duration(video_path)
+                    video_duration[video_id] = seconds_to_hms(await get_video_duration(video_path))
 
             self.video_duration = video_duration
+            logger.info(f"Video Duration dictionary: {self.video_duration}")
             
             # Remove files
             logger.info("Cleaning up media files for the retrieved Video IDs")
@@ -241,7 +273,11 @@ class VideoAgent:
             logger.info("Media cleanup completed.")
             
             logger.info("Generating the final answer from the accumulated answers")
-            return await self._generate_final_answer()
+            response = await self._generate_final_answer()
+            # logger.info(f"Response before offsetting timestamps: {response}")
+            await offset_all_sources_in_response(response, self.video_duration)
+            logger.info(f"Successfully offset all timestamps in the response:{response}")
+            return response
             
         except Exception as e:
             logger.exception(f"Video Agent Workflow failed: {e}")
@@ -301,8 +337,7 @@ class VideoAgent:
                     "content": [
                         {"type": "text", "text": f"Query: {self.query}"},
                         {"type": "text", "text": f"Context: {self.session_results}"},
-                        {"type": "text", "text": f"metadata: {self.video_ids}"},
-                        {"type": "text", "text": f"video_duration: {self.video_duration}"},
+                        {"type": "text", "text": f"metadata: {self.video_ids}"}
                     ],
                 },
             ]
@@ -318,7 +353,7 @@ class VideoAgent:
             )
             
             logger.info("Successfully generated the LLM Response")
-            logger.info("Converting the response to structured pydantic response")
+            
             
             return response
             
@@ -330,17 +365,19 @@ if __name__ == "__main__":
 
     async def main():
         # Example usage - replace with your actual values
-        query = "what is Gaussian Discriminant Analysis and Covariance Matrices?"
-        index_name = "test_index_long_video"
+        query = "Is dropout applied to different neurons in each epoch? For example, in a network with x inputs and y outputs, and 10 hidden layers, dropout may be applied to specific neurons in each layer during each epoch. Does this mean that we have as many models as there are epochs?"
+        index_name = "education-video-index-v2"
+        youtube_url = "https://youtube.com/watch?v=hd_KFJ5ktUc"
         use_computer_vision_tool = False
         stream = False
         use_critic_agent = True
-        top_n = 1
-        video_id = ""
+        top_n = 5
+        video_id = None
         video_agent = VideoAgent(
             query = query,
             index_name = index_name,
-            video_id=video_id,
+            youtube_url=youtube_url,
+            video_id = video_id,
             top_n = top_n,
             use_critic_agent = use_critic_agent,
             use_computer_vision_tool = use_computer_vision_tool,

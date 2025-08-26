@@ -4,7 +4,7 @@ from azure.identity.aio import DefaultAzureCredential
 from loguru import logger
 from mmct.providers.factory import provider_factory
 from mmct.config.settings import MMCTConfig
-from mmct.video_pipeline.core.ingestion.models import SubjectVarietyResponse
+# from mmct.video_pipeline.core.ingestion.models import SubjectVarietyResponse
 from typing_extensions import Annotated
 from typing import Optional
 import asyncio
@@ -13,11 +13,12 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), override=True)
 
 class VideoSearch:
-    def __init__(self, query, index_name, top_n=3, min_threshold=80):
+    def __init__(self, query, index_name, top_n=3, min_threshold=80, youtube_url = None):
         self.query = query
         self.top_n = top_n
         self.index_name = index_name
         self.min_threshold = min_threshold
+        self.youtube_url = youtube_url
         
         # Initialize configuration
         self.config = MMCTConfig()
@@ -85,56 +86,6 @@ class VideoSearch:
         except Exception as e:
             raise Exception(f"Exception occured while creating embeddings: {e}")
 
-    async def Subject_and_variety_query(self, transcript:str)->str:
-        """
-        Extract subject and variety information from a video transcript using an AI model.
-
-        Args:
-            transcript (str): The text transcription of the video.
-
-        Returns:
-            str: A JSON-formatted string containing subject and variety information, or error details.
-        """
-        try:
-            system_prompt = f"""
-            You are a TranscriptAnalyzer. Your job is to find all the details from the transcripts of every 2 seconds and from the audio.
-            Mention only the English name or the text into the response. If the text mentioned in the video is in Hindi or any other language, then convert it into English.
-            If any text from transcript is in Hindi or any other language, translate it into English and include it in the response.
-            Topics to include in the response:
-            1. Main subject or item being discussed in the video.
-            2. Specific variety or type of the subject (e.g., model numbers, versions, specific types) discussed.
-            If the transcript does not contain any specific subject or variety, assign 'None'.
-            Ensure the response language is only English, not Hinglish or Hindi or any other language.
-            Include the English-translated name of subjects and their variety only if certain.
-            """
-
-            prompt = [
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"The audio transcription is: {transcript}",
-                        }
-                    ],
-                },
-            ]
-
-            response = await self.llm_provider.chat_completion(
-                messages=prompt,
-                temperature=0,
-                response_format=SubjectVarietyResponse,
-            )
-            # Get the parsed Pydantic model from the response
-            parsed_response: SubjectVarietyResponse = response["content"]
-            # Return the model as JSON string
-            return parsed_response.model_dump_json()
-        except Exception as e:
-            return SubjectVarietyResponse(
-            subject="None", variety_of_subject="None"
-            ).model_dump_json()
-
     async def search_ai(
         self,
         query,
@@ -150,18 +101,8 @@ class VideoSearch:
             # Generate embeddings for the query
             query_embds = await self.generate_embeddings(text=query)
             
-            # Build filter expression
-            filter_expression = []
-            if subject:
-                subject = subject.replace("'", "''")  # Escape single quotes for Azure Search
-                filter_expression.append(f"subject eq '{subject}'")
-            if variety:
-                if variety != "None":
-                    variety = variety.replace("'", "''")  # Escape single quotes for Azure Search
-                    logger.info(f"setting filter for variety: {variety}")
-                    filter_expression.append(f"variety eq '{variety}'")
-
-            filter_query = " and ".join(filter_expression) if filter_expression else None
+            # filter_query = " and ".join(filter_expression) if filter_expression else None
+            filter_query = f"youtube_url eq '{self.youtube_url}'" if self.youtube_url else None  # No filtering by subject/variety
             
             # Use the search provider or fallback to direct Azure Search
             if self.search_provider:
@@ -173,7 +114,8 @@ class VideoSearch:
                     vector_filter_mode=VectorFilterMode.PRE_FILTER,
                     top=50,
                     filter=filter_query,
-                    select=["subject", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
+                    # select=["subject", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
+                    select=["blob_video_url", "hash_video_id", "youtube_url"]
                 )
             else:
                 # Fallback to direct Azure Search implementation
@@ -216,7 +158,8 @@ class VideoSearch:
                         vector_filter_mode=VectorFilterMode.PRE_FILTER,
                         top=50,
                         filter=filter_query,
-                        select=["subject", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
+                        # select=["subject", "variety", "blob_video_url", "hash_video_id", "youtube_url"]
+                    select=["blob_video_url", "hash_video_id", "youtube_url"]
                     )
                     search_results = [dict(result) async for result in results]
                 finally:
@@ -246,22 +189,23 @@ class VideoSearch:
             response_url = []
             scores = []
             url_ids = []
-            subject_response = await self.Subject_and_variety_query(query)
-            subject_response = eval(subject_response)
-            subject = subject_response.get("subject", "None")
-            variety = subject_response.get("variety_of_subject", "None")
-            if subject == "None":
-                subject = None
-            elif variety == "None":
-                variety = None
+            # Subject and variety extraction commented out
+            # subject_response = await self.Subject_and_variety_query(query)
+            # subject_response = eval(subject_response)
+            # subject = subject_response.get("subject", "None")
+            # variety = subject_response.get("variety_of_subject", "None")
+            # if subject == "None":
+            #     subject = None
+            # elif variety == "None":
+            #     variety = None
                 
             result = await self.search_ai(
                 query,
                 index_name,
                 top_n=top_n,
                 min_threshold=min_threshold,
-                subject=subject,
-                variety=variety,
+                subject=None,  # No subject filtering
+                variety=None,  # No variety filtering
             )
             for results in result:
                 if results:
@@ -297,6 +241,7 @@ async def video_search(
     query: Annotated[str, "query of which video id needs to fetch"],
     index_name: Annotated[str, "ai search index name"],
     top_n: Annotated[int, "n video_id retreivel"] = 1,
+    youtube_url: Optional[str] = None,
     llm_provider: Optional[object] = None,
     embedding_provider: Optional[object] = None,
     search_provider: Optional[object] = None
@@ -304,15 +249,16 @@ async def video_search(
     """
     This tool returns the video id of ingested video corresponds to the query
     """
-    video_search = VideoSearch(query=query, top_n=top_n, index_name=index_name, min_threshold=70)
+    video_search = VideoSearch(query=query, top_n=top_n, index_name=index_name, min_threshold=70, youtube_url=youtube_url)
     res = await video_search.search()
     return res
 
 
 if __name__ == "__main__":
     # Example usage - replace with your actual values
-    query = "example query"
-    index_name = "your-index-name"
+    query = 'How can hθ\u200b(x), which is equal to ∑j=0n\u200b(θj\u200bXj\u200b), be written as θTX? Why is the transpose applied to θ, and not simply θ multiplied by X?' 
+    youtube_url = "https://youtube.com/watch?v=-aqUek49iL8"
+    index_name = "education-video-index-v2"
     top_n = 3
-    res = asyncio.run(video_search(query=query, index_name=index_name, top_n=top_n))
+    res = asyncio.run(video_search(query=query, index_name=index_name, top_n=top_n, youtube_url=youtube_url))
     print(res)

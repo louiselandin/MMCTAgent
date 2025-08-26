@@ -27,9 +27,16 @@ client_embed = client_embed.get_client()
 
 
 async def query_video_description(
-    summary_query: Annotated[str, "query video description"],
+    summary_query: Annotated[str, "search query to fetch the timestamps"],
     video_id: Annotated[str, "video id"],
 ) -> str:
+    """
+    `query_video_description` tool which retrieves the timestamps where query/keyword is discussed.
+
+    Args:
+    video_id (str): Video identifier.
+    summary_query (str): Textual search query derived from the user question or from transcript/summary/action_taken.
+    """
     try:
         logger.info("Initialization of query video description tool")
         base_dir = await get_media_folder()
@@ -144,7 +151,6 @@ async def query_video_description(
             processed_texts = [text.replace("\n", " ") for text in texts]
             embeddings = []
             processed_texts = [i for i in processed_texts if (i and len(i) != 0)]
-            print("Processed texts", processed_texts)
             for i in range(0, len(processed_texts), batch_size):
                 batch = processed_texts[i : i + batch_size]
                 response = await client_embed.embeddings.create(

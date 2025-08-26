@@ -12,6 +12,13 @@ from datetime import datetime
 
 
 async def query_frames_computer_vision(frames_query:Annotated[str,"search query over the frames"], video_id:Annotated[str,'video id'])->str:
+        """
+    Retrieve candidate timestamps by visually searching frames for entities, actions, or scenes.
+
+    Args:
+    video_id (str): Video identifier.
+    frames_query (str): Vision-oriented query (objects, actions, scenes, attributes).
+    """
         # Getting requred environment variables
         AZURECV_ENDPOINT = os.environ.get("COMPUTER_VISION_ENDPOINT")
         BLOB_MANAGED_IDENTITY = os.environ.get("BLOB_MANAGED_IDENTITY") == "True"

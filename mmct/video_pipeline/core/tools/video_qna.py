@@ -274,11 +274,11 @@ async def video_qna(
     
 if __name__=="__main__":
     # Example usage - replace with your actual values
-    query = "example question about the video"
-    video_id = "example-video-id"
+    query = "Why is a 5x5 convolution used when transitioning to the first FC layer? Why is a 1x1 convolution used for the next layer in both the regression and classification heads?"
+    video_id = "8c91a475f19eec41c760979dd6db212ad7a1876f755906f0e6c933e339d96189"
     use_computer_vision_tool = False
     use_critic_agent = True
-    stream = False
+    stream = True
     tools = [
         VideoQnaTools.GET_VIDEO_DESCRIPTION,
         VideoQnaTools.QUERY_VIDEO_DESCRIPTION,
