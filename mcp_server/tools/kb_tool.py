@@ -53,6 +53,7 @@ async def kb_tool(
         top=request.k,
         filter=await get_filter_string(request.filters.model_dump()) if request.filters else None,
         embedding=embedding,
+        select=request.select if request.select else None
     )
 
     return results

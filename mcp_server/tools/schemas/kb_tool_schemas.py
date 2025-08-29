@@ -28,6 +28,10 @@ class SearchRequest(BaseModel):
     index_name: str = Field(...,description="Azure Index Name")
     k: int = Field(10, description="Number of top results to return")
     filters: Optional[FilterParams] = None
+    select: Optional[List[str]] = Field(
+        default=None,
+        description="List of field names to fetch from the index results. Available field names: [category, sub_category, subject, variety, hash_video_id ...]"
+    )
 
 
 async def get_filter_string(filters: Dict[str, Any]) -> Optional[str]:

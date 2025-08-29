@@ -294,6 +294,7 @@ class AzureSearchProvider(SearchProvider):
             top = kwargs.pop("top", 10)
             embedding = kwargs.pop("embedding", [])
             query_type = kwargs.pop("query_type", None)
+            vector_queries = kwargs.pop("vector_queries",None)
 
             if query_type=="semantic":
                 semantic_configuration_name="my-semantic-search-config"
@@ -302,7 +303,7 @@ class AzureSearchProvider(SearchProvider):
             if query_type=="vector":
                 query_type = None
                 
-            if embedding and top:
+            if embedding and top and not vector_queries:
                 vector_query = VectorizedQuery(
                     vector=embedding, k_nearest_neighbors=top, fields="embeddings"
                 )
