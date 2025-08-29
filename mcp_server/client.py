@@ -2,7 +2,7 @@ import asyncio
 from typing import List, Dict, Any
 from loguru import logger
 from fastmcp import Client
-
+import datetime
 
 async def list_and_log_tools(client: Client) -> List[str]:
     """
@@ -81,7 +81,7 @@ async def main(tools_to_validate: List[str] = None) -> None:
                     "video_agent_tool",
                     {
                         "query": "user-query",
-                        "index_name": "valid-index-name",
+                        "index_name": "index-name",
                         "top_n": 2,
                         "use_computer_vision_tool": False,
                         "use_critic_agent": True,
@@ -116,10 +116,29 @@ async def main(tools_to_validate: List[str] = None) -> None:
                     },
                 )
 
+            if "kb_tool" in tools_to_validate and "kb_tool" in available_tools:
+                await validate_tool(
+                    client,
+                    "kb_tool",
+                    {
+                        "request": {   # understand the input schema of the kb_tool to understand more about the relevant query and filter parameters
+                            "query": "relevant-user-query",
+                            "query_type": "available query-type",
+                            "index_name": "index-name",
+                            "k": 10,
+                            "filters": {
+                                "category": "relevant-category",    # relevant category         
+                                "hash_video_id": "hash-video-id",   # hash video id filter
+                                "time_from": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+                            }
+                        }
+                    }
+                )
+
     except Exception as e:
         logger.exception(f"Unexpected error occurred: {e}")
 
 
 if __name__ == "__main__":
     # Run the main function with desired tools
-    asyncio.run(main(tools_to_validate=["video_ingestion_tool"]))
+    asyncio.run(main(tools_to_validate=["kb_tool"]))
