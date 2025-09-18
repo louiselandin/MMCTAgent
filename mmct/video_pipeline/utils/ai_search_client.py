@@ -400,7 +400,7 @@ class AISearchDocument(BaseModel):
     youtube_url: str = Field(
         ...,
         searchable=False,
-        filterable=False,
+        filterable=True,
         retrievable=True,
         stored=True,
         sortable=False,

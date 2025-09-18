@@ -29,6 +29,12 @@ from mmct.video_pipeline.core.ingestion.languages import Languages
 from mmct.video_pipeline.core.ingestion.transcription.transcription_services import (
     TranscriptionServices,
 )
+
+from mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_extractor import (
+    KeyframeExtractor,
+    KeyframeExtractionConfig,
+)
+
 from mmct.video_pipeline.core.ingestion.semantic_chunking.semantic import (
     SemanticChunking,
 )
@@ -135,6 +141,7 @@ class IngestionPipeline:
         ] = False,
         hash_video_id: Annotated[str, "unique Hash Video Id"] = None,
         frame_stacking_grid_size: Annotated[int, "Grid size for frame stacking (>1 enables stacking, 1 disables)"] = 4,
+        motion_threshold: Annotated[float, "Motion threshold for keyframe extraction"] = 0.8,
     ):
         if disable_console_log == False:
             log_manager.enable_console()
@@ -146,6 +153,7 @@ class IngestionPipeline:
         self.audio_container = os.getenv("AUDIO_CONTAINER_NAME")
         self.transcript_container = os.getenv("TRANSCRIPT_CONTAINER_NAME")
         self.frames_container = os.getenv("FRAMES_CONTAINER_NAME")
+        self.keyframe_container = os.getenv("KEYFRAME_CONTAINER_NAME", "keyframes")  # Default to "keyframes" if not set
         self.timestamps_container = os.getenv("TIMESTAMPS_CONTAINER_NAME")
         self.video_description_container_name = os.getenv("VIDEO_DESCRIPTION_CONTAINER_NAME")
         self.video_path = video_path
@@ -157,6 +165,7 @@ class IngestionPipeline:
         self.use_computer_vision_tool = use_computer_vision_tool
         self.language = language
         self.frame_stacking_grid_size = frame_stacking_grid_size
+        self.motion_threshold = motion_threshold
         self.blob_manager = None  # Will be initialized async when first needed
         self.original_video_path = video_path
 
@@ -174,25 +183,25 @@ class IngestionPipeline:
         try:
             file_size_mb = os.path.getsize(self.video_path) / (1024 * 1024)
             self.logger.info(f"Video file size: {file_size_mb:.2f} MB")
-            
+
             if file_size_mb > 500:
                 self.logger.info(f"Video file size ({file_size_mb:.2f} MB) exceeds 500 MB threshold. Starting compression...")
-                
+
                 # Create compressed directory in media folder
                 media_folder = await get_media_folder()
                 compressed_dir = os.path.join(media_folder, "compressed")
                 os.makedirs(compressed_dir, exist_ok=True)
-                
+
                 # Initialize video compressor
                 compressor = VideoCompressor(
                     input_path=self.video_path,
                     target_size_mb=500,
                     output_dir=compressed_dir
                 )
-                
+
                 # Compress the video
                 compressor.compress()
-                
+
                 # Update video path to compressed version
                 compressed_path = compressor.output_path
                 if os.path.exists(compressed_path):
@@ -206,9 +215,222 @@ class IngestionPipeline:
                     raise RuntimeError("Video compression failed")
             else:
                 self.logger.info("Video file size is within acceptable limits, no compression needed")
-                
+
         except Exception as e:
             self.logger.exception(f"Exception occurred during video compression check: {e}")
+            raise
+
+    async def _extract_keyframes(self):
+        """
+        Extract keyframes from video using motion detection early in pipeline.
+        """
+        try:
+            self.logger.info("Starting keyframe extraction...")
+
+            # Generate hash ID for consistent naming
+            video_hash_id = await get_file_hash(self.video_path)
+
+            # Configure keyframe extraction
+            keyframe_config = KeyframeExtractionConfig(
+                motion_threshold=self.motion_threshold,
+                sample_fps=1
+            )
+
+            # Initialize keyframe extractor
+            keyframe_extractor = KeyframeExtractor(keyframe_config)
+
+            # Extract keyframes
+            keyframe_metadata = await keyframe_extractor.extract_keyframes(
+                video_path=self.video_path,
+                video_id=video_hash_id
+            )
+
+            self.logger.info(f"Successfully extracted {len(keyframe_metadata)} keyframes")
+            for frame in keyframe_metadata:
+                self.logger.debug(f"  Frame {frame.frame_number}: {frame.timestamp_seconds:.2f}s (motion: {frame.motion_score:.3f})")
+
+        except Exception as e:
+            self.logger.exception(f"Exception occurred during keyframe extraction: {e}")
+            raise
+
+    async def _extract_keyframes_from_parts(self, video_paths: list, hash_suffixes: list):
+        """
+        Extract keyframes from multiple video parts.
+        """
+        try:
+            self.logger.info(f"Starting keyframe extraction for {len(video_paths)} video parts...")
+
+            # Generate base hash ID from Part A video for consistent hash IDs
+            part_a_path = video_paths[0]  # Part A is always first
+            base_hash_id = await get_file_hash(part_a_path)
+
+            for video_path, hash_suffix in zip(video_paths, hash_suffixes):
+                part_name = "Part A" if hash_suffix == "" else f"Part {hash_suffix}"
+                part_hash_id = base_hash_id + hash_suffix
+
+                self.logger.info(f"Extracting keyframes for {part_name}: {os.path.basename(video_path)}")
+                self.logger.info(f"  Hash ID: {part_hash_id}")
+
+                # Configure keyframe extraction
+                keyframe_config = KeyframeExtractionConfig(
+                    motion_threshold=self.motion_threshold,
+                    sample_fps=1
+                )
+
+                # Initialize keyframe extractor
+                keyframe_extractor = KeyframeExtractor(keyframe_config)
+
+                # Extract keyframes for this part
+                keyframe_metadata = await keyframe_extractor.extract_keyframes(
+                    video_path=video_path,
+                    video_id=part_hash_id
+                )
+
+                self.logger.info(f"Successfully extracted {len(keyframe_metadata)} keyframes for {part_name}")
+                for frame in keyframe_metadata:
+                    self.logger.debug(f"  Frame {frame.frame_number}: {frame.timestamp_seconds:.2f}s (motion: {frame.motion_score:.3f})")
+
+        except Exception as e:
+            self.logger.exception(f"Exception occurred during keyframe extraction from parts: {e}")
+            raise
+
+
+    async def _perform_early_ingestion_check(self) -> bool:
+        """
+        Perform early ingestion check to avoid unnecessary processing.
+
+        Returns:
+            bool: True if should continue processing, False if already ingested
+        """
+        try:
+            self.logger.info("Performing early ingestion check...")
+
+            # Generate hash ID for initial check
+            video_hash_id = await get_file_hash(self.video_path)
+
+            # Check if video already exists in the index
+            is_already_ingested = await check_video_already_ingested(
+                hash_id=video_hash_id,
+                index_name=self.index_name
+            )
+
+            if is_already_ingested:
+                self.logger.info(f"Video with hash_id {video_hash_id} already exists in index {self.index_name}. Skipping pipeline - no processing needed.")
+                return False
+
+            self.logger.info("Video not found in index. Proceeding with full ingestion pipeline...")
+            return True
+
+        except Exception as e:
+            self.logger.exception(f"Exception occurred during early ingestion check: {e}")
+            raise
+
+    async def _perform_keyframe_extraction(self, video_paths: list, hash_suffixes: list):
+        """
+        Orchestrate keyframe extraction based on video configuration.
+        Handles both single video and multi-part video scenarios.
+        """
+        try:
+            if len(video_paths) > 1:
+                # Video was split - extract keyframes from each part
+                self.logger.info(f"Video was split into {len(video_paths)} parts. Extracting keyframes from each part...")
+                await self._extract_keyframes_from_video_parts(video_paths, hash_suffixes)
+            else:
+                # Single video - extract keyframes from original
+                self.logger.info("Single video detected. Extracting keyframes from original video...")
+                await self._extract_keyframes()
+
+        except Exception as e:
+            self.logger.exception(f"Exception occurred during keyframe extraction orchestration: {e}")
+            raise
+
+    async def _extract_keyframes_from_video_parts(self, video_paths: list, hash_suffixes: list):
+        """
+        Extract keyframes from multiple video parts with consistent naming.
+        """
+        try:
+            self.logger.info(f"Starting keyframe extraction for {len(video_paths)} video parts...")
+
+            # Generate base hash ID from Part A video for consistent hash IDs
+            part_a_path = video_paths[0]  # Part A is always first
+            base_hash_id = await get_file_hash(part_a_path)
+
+            for video_path, hash_suffix in zip(video_paths, hash_suffixes):
+                part_name = "Part A" if hash_suffix == "" else f"Part {hash_suffix}"
+                part_hash_id = base_hash_id + hash_suffix
+
+                self.logger.info(f"Extracting keyframes for {part_name}: {os.path.basename(video_path)}")
+                self.logger.info(f"  Hash ID: {part_hash_id}")
+
+                # Configure keyframe extraction
+                keyframe_config = KeyframeExtractionConfig(
+                    motion_threshold=self.motion_threshold,
+                    sample_fps=1
+                )
+
+                # Initialize keyframe extractor
+                keyframe_extractor = KeyframeExtractor(keyframe_config)
+
+                # Extract keyframes for this part
+                keyframe_metadata = await keyframe_extractor.extract_keyframes(
+                    video_path=video_path,
+                    video_id=part_hash_id
+                )
+
+                self.logger.info(f"Successfully extracted {len(keyframe_metadata)} keyframes for {part_name}")
+                for frame in keyframe_metadata:
+                    self.logger.debug(f"  Frame {frame.frame_number}: {frame.timestamp_seconds:.2f}s (motion: {frame.motion_score:.3f})")
+
+        except Exception as e:
+            self.logger.exception(f"Exception occurred during keyframe extraction from video parts: {e}")
+            raise
+
+    async def _add_keyframes_to_upload_tasks(self, context: ProcessingContext, blob_manager):
+        """
+        Add keyframes to pending upload tasks instead of all frames.
+        """
+        try:
+            # Get media folder and keyframes directory
+            media_folder = await get_media_folder()
+            keyframes_dir = os.path.join(media_folder, "keyframes", context.hash_id)
+
+            if not os.path.exists(keyframes_dir):
+                self.logger.warning(f"Keyframes directory not found: {keyframes_dir}")
+                return
+
+            # Get all keyframe files from the directory
+            keyframe_files = []
+            for filename in os.listdir(keyframes_dir):
+                if filename.endswith('.jpg'):
+                    keyframe_path = os.path.join(keyframes_dir, filename)
+                    keyframe_files.append((filename, keyframe_path))
+
+            if not keyframe_files:
+                self.logger.warning(f"No keyframes found in directory: {keyframes_dir}")
+                return
+
+            self.logger.info(f"Found {len(keyframe_files)} keyframes to upload")
+
+            # Add upload tasks for each keyframe
+            for filename, keyframe_path in keyframe_files:
+                context.pending_upload_tasks.append(
+                    blob_manager.upload_file(
+                        container=self.keyframe_container,
+                        blob_name=f"{context.hash_id}/{filename}",
+                        file_path=keyframe_path,
+                    )
+                )
+
+            # Add keyframes directory to local resources for cleanup
+            context.local_resources.append(keyframes_dir)
+
+            # Update blob URLs to point to keyframes instead of frames
+            context.blob_urls["keyframes_blob_folder_url"] = blob_manager.get_blob_url(
+                container=self.keyframe_container, blob_name=f"keyframes/{context.hash_id}"
+            )
+
+        except Exception as e:
+            self.logger.exception(f"Exception occurred during keyframe upload: {e}")
             raise
     
     async def _process_video_part_parallel(self, video_path: str, part_hash_id: str) -> None:
@@ -550,15 +772,10 @@ class IngestionPipeline:
             context.local_resources.extend(png_paths)  # Track for cleanup
             self.logger.info("Successfully saved the frames")
 
-            for i, png_path in enumerate(png_paths):
-                context.pending_upload_tasks.append(
-                    blob_manager.upload_file(
-                        container=self.frames_container,
-                        blob_name=f"frames/{context.hash_id}/frame_{i}.png",
-                        file_path=png_path,
-                    )
-                )
-            self.logger.info("Logged the frames to pending upload tasks list")
+            # Add keyframes to pending upload tasks (will be uploaded later with other files)
+            self.logger.info("Adding keyframes to pending upload tasks...")
+            await self._add_keyframes_to_upload_tasks(context, blob_manager)
+            self.logger.info("Keyframes added to pending upload tasks list")
 
             self.logger.info("Saving the timestamps file to the local directory")
             async with aiofiles.open(
@@ -584,11 +801,11 @@ class IngestionPipeline:
             )
             self.logger.info("Logged the timestamps file to pending upload tasks list")
 
-            context.blob_urls["frames_blob_folder_url"] = blob_manager.get_blob_url(
-                container=self.frames_container, blob_name=f"frames/{context.hash_id}"
+            context.blob_urls["keyframes_blob_folder_url"] = blob_manager.get_blob_url(
+                container=self.keyframe_container, blob_name=f"keyframes/{context.hash_id}"
             )
             self.logger.info(
-                "Successfully loggeed the frames blob folder path url to the blob urls mapping dictionary!"
+                "Successfully logged the keyframes blob folder path url to the blob urls mapping dictionary!"
             )
             context.blob_urls["timestamps_blob_url"] = blob_manager.get_blob_url(
                 container=self.timestamps_container,
@@ -860,16 +1077,25 @@ class IngestionPipeline:
     async def __call__(self):
         """Main ingestion pipeline method - now supports video splitting and parallel processing."""
         try:
+            # Early ingestion check - exit immediately if already processed
+            should_continue = await self._perform_early_ingestion_check()
+            if not should_continue:
+                return
+
             await self._check_and_compress_video()  # Check file size and compress if needed
             self.logger.info("Video compression check completed!")
-            
+
             # Handle transcript_path case with timestamp-based chunking
             if self.transcript_path:
                 await self._process_with_transcript_chunking()
                 return
-            
+
             # Split video if needed based on conditions (original logic)
             video_paths, hash_suffixes = await split_video_if_needed(self.video_path)
+
+            # Extract keyframes after video splitting check
+            await self._perform_keyframe_extraction(video_paths, hash_suffixes)
+            self.logger.info("Keyframes extraction completed!")
             self.logger.info(f"Processing {len(video_paths)} video part(s)")
             
             # Track split video files for cleanup
@@ -1184,8 +1410,9 @@ class IngestionPipeline:
 
 if __name__ == "__main__":
     # Example usage - replace with your actual values
-    video_path = "/home/v-amanpatkar/work/chapter_generation_opt/MMCTAgent/mmct/video_pipeline/core/ingestion/ingestion_pipeline.py"
+    video_path = "/home/v-amanpatkar/work/chapter_generation_opt/video/sample.mp4"
     index = "test_index_a"
+    youtube_url = "https://www.youtube.com/watch?v=W6wVU5b5nQk&t=1s"
     source_language = Languages.ENGLISH_UNITED_STATES
     ingestion = IngestionPipeline(
         video_path=video_path,

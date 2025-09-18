@@ -1,7 +1,6 @@
 # Importing modules
 from azure.search.documents.models import VectorizedQuery, VectorFilterMode
 from azure.identity.aio import DefaultAzureCredential
-from loguru import logger
 from mmct.providers.factory import provider_factory
 from mmct.config.settings import MMCTConfig
 # from mmct.video_pipeline.core.ingestion.models import SubjectVarietyResponse
@@ -36,7 +35,6 @@ class VideoSearch:
                 self.config.embedding.model_dump()
             )
         except Exception as e:
-            logger.warning(f"Failed to create embedding provider: {e}. Using LLM provider for embeddings.")
             # Use LLM config for embedding provider as fallback
             llm_config = self.config.llm.model_dump()
             # Add embedding-specific deployment name if available
@@ -57,7 +55,6 @@ class VideoSearch:
                 self.config.search.model_dump()
             )
         except Exception as e:
-            logger.warning(f"Failed to create search provider: {e}. Search functionality may be limited.")
             self.search_provider = None
 
     def _get_credential(self):
@@ -213,7 +210,6 @@ class VideoSearch:
                     scores.append(results["@search.score"])
                     url_ids.append(results["hash_video_id"])
             if not response_url:
-                logger.info("Searching again")
                 result = await self.search_ai(
                     query, index_name, top_n, min_threshold=min_threshold
                 )
@@ -261,4 +257,4 @@ if __name__ == "__main__":
     index_name = "education-video-index-v2"
     top_n = 3
     res = asyncio.run(video_search(query=query, index_name=index_name, top_n=top_n, youtube_url=youtube_url))
-    print(res)
+    pass

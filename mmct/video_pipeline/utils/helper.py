@@ -62,8 +62,9 @@ async def load_images(
     return [img for img in images if img is not None]
 
 
-async def download_blobs(blob_names, output_dir):
-    container_name = os.getenv("FRAMES_CONTAINER_NAME")
+async def download_blobs(blob_names, output_dir, container_name=None):
+    if container_name is None:
+        container_name = os.getenv("FRAMES_CONTAINER_NAME")
     
     # Use Azure CLI credential if available, fallback to DefaultAzureCredential
     credential = _get_credential()
