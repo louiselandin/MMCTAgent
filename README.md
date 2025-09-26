@@ -288,8 +288,8 @@ import asyncio
 
 # Configure the Video Agent
 video_agent = VideoAgent(
-    query="Can you provide information on Neemastra and the advantages it offers?", #"input-query",
-    index_name="farming-video-bihar-index", #"your-index-name",
+    query="input-query",
+    index_name="your-index-name",
     video_id=None,  # Optional: specify video ID
     youtube_url=None,  # Optional: YouTube URL
     use_critic_agent=True,  # Enable critic agent
