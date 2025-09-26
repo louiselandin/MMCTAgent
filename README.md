@@ -81,11 +81,6 @@ It supports a configurable set of tools via the `ImageQnaTools` enum:
 <details>
 
 <summary>VideoAgent</summary>
-<p align="center">
-  <a href="https://arxiv.org/abs/2405.18358">
-    <img src="docs/multimedia/videoPipeline.webp" alt="Video Pipeline" width="100%" height="100%" />
-  </a>
-</p>
 
 Optimized for deep video understanding:
 
