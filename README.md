@@ -83,21 +83,17 @@ It supports a configurable set of tools via the `ImageQnaTools` enum:
 <summary>VideoAgent</summary>
 [![](docs/multimedia/videoPipeline.webp)](https://arxiv.org/abs/2405.18358)
 
-Optimized for deep video understanding through a structured two-stage pipeline:
+Optimized for deep video understanding:
 
-1. **Video Retrieval**  
-   Uses an Azure AI Search index to fetch videos relevant to a user query.
-
-2. **Video Question Answering**  
+**Video Question Answering**  
 
 [![](docs/multimedia/videoAgent.webp)](https://arxiv.org/abs/2405.18358)
 
    Applies a fixed toolchain orchestrated by the Planner:
 
-   - `GET_VIDEO_DESCRIPTION` – Extracts transcript and visual summary.
-   - `QUERY_VIDEO_DESCRIPTION` – Finds top-3 relevant timestamps.
-   - `QUERY_FRAMES_COMPUTER_VISION` *(optional)* – Identifies visual cues.
-   - `QUERY_VISION_LLM` – Combines frame-level visual and textual analysis.
+   - `GET_CONTEXT` – Extracts relevant transcript and visual summary chunks.
+   - `GET_RELEVANT_FRAMES` – Provides semantic similiar keyframes to the query. This tool is based on the clip embedding.
+   - `QUERY_FRAME` – Queries specific video keyframes frames to extract detailed information to provide the additional visual context to the planner.
 
 > The Critic agent helps validate and refine answers, improving reasoning depth.
 
