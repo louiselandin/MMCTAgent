@@ -91,7 +91,7 @@ Optimized for deep video understanding:
    Applies a fixed toolchain orchestrated by the Planner:
 
    - `GET_CONTEXT` – Extracts relevant transcript and visual summary chunks.
-   - `GET_RELEVANT_FRAMES` – Provides semantic similiar keyframes to the query. This tool is based on the clip embedding.
+   - `GET_RELEVANT_FRAMES` – Provides semantic similiar keyframes related to the query. This tool is based on the clip embedding.
    - `QUERY_FRAME` – Queries specific video keyframes frames to extract detailed information to provide the additional visual context to the planner.
 
 > The Critic agent helps validate and refine answers, improving reasoning depth.
@@ -288,12 +288,14 @@ import asyncio
 
 # Configure the Video Agent
 video_agent = VideoAgent(
-    query="Explain the main events in this video",
-    index_name="your-search-index",  # Azure AI Search index
-    top_n=3,  # Number of relevant videos to analyze
-    use_computer_vision_tool=True,   # Enable visual analysis
-    use_critic_agent=True,           # Enable critical review
-    stream=True                      # Stream progress logs
+    query="Can you provide information on Neemastra and the advantages it offers?", #"input-query",
+    index_name="farming-video-bihar-index", #"your-index-name",
+    video_id=None,  # Optional: specify video ID
+    youtube_url=None,  # Optional: YouTube URL
+    use_critic_agent=True,  # Enable critic agent
+    stream=False,  # Stream response
+    use_graph_rag=False,  # Optional: use graph RAG
+    cache=False  # Optional: enable caching
 )
 
 # Execute video analysis
