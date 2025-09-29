@@ -32,10 +32,10 @@ MMCTAgent is a state-of-the-art multi-modal AI framework that brings human-like 
 
 ### Why MMCTAgent?
 
-- **🧠 Human-like Reasoning**: Implements structured critical thinking with planning and critique phases
+- **🧠 Human-Inspired Critical Thinking**: MMCTAgent emulates human cognitive processes by iteratively analyzing multi-modal information, decomposing complex queries, planning strategies, and dynamically evolving its reasoning.
 - **🎯 Superior Performance**: Outperforms traditional approaches on complex visual reasoning benchmarks  
-- **🔧 Production Ready**: Enterprise-grade architecture with multi-cloud support and security features
-- **🚀 Easy Integration**: Modular design allows seamless integration into existing workflows
+- **🔬 Research-Driven Innovation**: Designed as a research framework, MMCTAgent integrates critical thinking elements such as verification of final answers and self-reflection through a novel approach that defines a vision-based critic and identifies task-specific evaluation criteria, thereby enhancing its decision-making abilities.
+- **🚀 Easy Integration**: Its modular design allows for easy integration into existing workflows, facilitating adoption across various domains requiring advanced visual reasoning capabilities.
 
 <p align="center">
   <a href="https://arxiv.org/abs/2405.18358">
@@ -90,8 +90,8 @@ Optimized for deep video understanding:
 
    Applies a fixed toolchain orchestrated by the Planner:
 
-   - `GET_CONTEXT` – Extracts relevant transcript and visual summary chunks.
-   - `GET_RELEVANT_FRAMES` – Provides semantic similiar keyframes related to the query. This tool is based on the clip embedding.
+   - `GET_CONTEXT` – Extracts transcript and visual summary chunks relevant to the query.
+   - `GET_RELEVANT_FRAMES` – Provides semantic similiar keyframes related to the query. This tool is based on the CLIP embedding.
    - `QUERY_FRAME` – Queries specific video keyframes frames to extract detailed information to provide the additional visual context to the planner.
 
 > The Critic agent helps validate and refine answers, improving reasoning depth.
