@@ -297,7 +297,7 @@ class AzureSearchProvider(SearchProvider):
             vector_queries = kwargs.pop("vector_queries",None)
 
             if query_type=="semantic":
-                semantic_configuration_name="my-semantic-search-config"
+                semantic_configuration_name=kwargs.pop("semantic_configuration_name","my-semantic-search-config")
                 search_text = None
                 
             if query_type=="vector":
@@ -330,7 +330,7 @@ class AzureSearchProvider(SearchProvider):
         except Exception as e:
             logger.error(f"Azure AI Search failed: {e}")
             raise ProviderException(f"Azure AI Search failed: {e}")
-    
+        
     @handle_exceptions(retries=3, exceptions=(Exception,))
     @convert_exceptions({Exception: ProviderException})
     async def index_document(self, document: Dict, index_name: str = None) -> bool:

@@ -1,32 +1,26 @@
 # Importing modules
 import asyncio
 import os
-import sys
-from loguru import logger
+import logging
 from dotenv import load_dotenv
 from typing import Optional
 
-load_dotenv(override=True)
+# Suppress autogen internal logging
+from mmct.custom_logger import logger as _
+logging.getLogger("autogen").setLevel(logging.WARNING)
+logging.getLogger("autogen_agentchat").setLevel(logging.WARNING)
 
-import ast
 from enum import Enum
 from typing import Annotated
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.ui import Console
-# from mmct.custom_logger import logger as _
-from autogen_agentchat.teams import SelectorGroupChat, RoundRobinGroupChat
+from autogen_agentchat.teams import Swarm, RoundRobinGroupChat
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
 from autogen_agentchat.base import TaskResult
-from mmct.video_pipeline.core.tools.get_video_description import (
-    get_video_description,
-)
-from mmct.video_pipeline.core.tools.query_vision_llm import query_vision_llm
-from mmct.video_pipeline.core.tools.query_video_description import (
-    query_video_description,
-)
-from mmct.video_pipeline.core.tools.query_frames_computer_vision import (
-    query_frames_computer_vision,
-)
+from mmct.video_pipeline.core.tools.get_context import get_context
+from mmct.video_pipeline.core.tools.get_relevant_frames import get_relevant_frames
+from mmct.video_pipeline.core.tools.query_frame import query_frame
+
 from mmct.video_pipeline.core.tools.critic import critic_tool
 from mmct.video_pipeline.prompts_and_description import (
     get_planner_system_prompt,
@@ -34,73 +28,69 @@ from mmct.video_pipeline.prompts_and_description import (
     PLANNER_DESCRIPTION,
     CRITIC_DESCRIPTION,
 )
-from mmct.video_pipeline.utils.helper import load_required_files
+
+from autogen_ext.models.cache import ChatCompletionCache, CHAT_CACHE_VALUE_TYPE
+from autogen_ext.cache_store.diskcache import DiskCacheStore
+from diskcache import Cache as DiskCache
 from mmct.llm_client import LLMClient  # Keep for backward compatibility
-from mmct.providers.factory import provider_factory
-from mmct.config.settings import MMCTConfig
+
+load_dotenv(override=True)
+
 
 class VideoQnaTools(Enum):
     """
-    Enum class for tools
+    Enum class for tools - planner has access to all three tools for comprehensive video analysis
     """
-    GET_VIDEO_DESCRIPTION = (get_video_description,)
-    QUERY_VIDEO_DESCRIPTION = (query_video_description,)
-    QUERY_FRAMES_COMPUTER_VISION = (query_frames_computer_vision,)
-    QUERY_VISION_LLM = (query_vision_llm,)
+
+    GET_CONTEXT = (get_context,)
+    GET_RELEVANT_FRAMES = (get_relevant_frames,)
+    QUERY_FRAME = (query_frame,)
 
 
 class VideoQnA:
     """
-    Performs question answering on a specific video using the MMCT (Multi-modal Critical Thinking) framework.
+    VideoQnA with comprehensive multi-tool support for video analysis using Swarm orchestration.
 
     MMCT consists of:
-    - **Planner Agent**: Selects and invokes tools based on the input query and context.
-    - **Critic Agent** (optional): Validates or refines the planner's output.
+    - **Planner Agent**: Has access to three tools for comprehensive video analysis:
+      1. get_context: Retrieves transcript and visual summary documents
+      2. get_relevant_frames: Gets specific frame names based on visual queries
+      3. query_frame: Analyzes downloaded frames with vision models
+    - **Critic Agent**: Validates or refines the planner's output.
 
-    This class takes a natural language query and a video ID (typically retrieved from an AI search index),
-    and applies a set of tools to generate an answer. Tools can include transcript summarization,
-    vision-based reasoning, and LLM-based analysis.
-
-    Users can customize which tools are used by passing a dictionary of callables. These tools are
-    available in the `core` module of the `video_pipeline` package and can be enabled or disabled as needed.
+    Workflow (with Swarm orchestration):
+    1. Planner starts with get_context for transcript/summary information
+    2. If more visual content needed, uses get_relevant_frames for frame selection
+    3. Uses query_frame to analyze the downloaded frames visually
+    4. Combines textual and visual information for comprehensive answers
+    5. Can hand off to critic for validation and refinement
+    6. Critic can hand back to planner if revisions are needed
 
     Args:
         query (str): The natural language question to be answered based on the video content.
-        video_id (str): The unique identifier of the video, typically retrieved from the AI search index.
+        video_id (str): The unique identifier of the video.
         use_critic_agent (bool, optional): Whether to use the critic agent for answer refinement. Defaults to True.
-        use_computer_vision_tool (bool, optional): Whether to use Computer Vision tools for visual content analysis. Defaults to True.
-        tools (dict, optional): A dictionary mapping tool names to their corresponding callable functions.
-            This allows fine-grained control over which tools the planner can use. Defaults to:
-            - "GET_VIDEO_DESCRIPTION": `get_video_description`
-            - "QUERY_VIDEO_DESCRIPTION": `query_video_description`
-            - "QUERY_FRAMES_COMPUTER_VISION": `query_frames_computer_vision`
-            - "QUERY_VISION_LLM": `query_vision_llm`
-
-    Note:
-        To customize tools, import desired tool functions from `video_pipeline.core.tools.<tool_file>` and
-        pass them via the `tools` argument.
+        index_name (str, optional): Vector index name for context retrieval. Defaults to "education-video-index-v2".
     """
+
     def __init__(
         self,
-        query,
-        video_id,
-        use_critic_agent=True,
-        use_computer_vision_tool=True,
-        tools: dict = {
-            "GET_VIDEO_DESCRIPTION": get_video_description,
-            "QUERY_VIDEO_DESCRIPTION": query_video_description,
-            "QUERY_FRAMES_COMPUTER_VISION": query_frames_computer_vision,
-            "QUERY_VISION_LLM": query_vision_llm,
-        },
+        query: str,
+        video_id:  Optional[str] = None,
+        youtube_url:  Optional[str] = None,
+        use_critic_agent: bool = True,
+        index_name: str = "education-video-index-v2",
         llm_provider: Optional[object] = None,
-        vision_provider: Optional[object] = None,
-        transcription_provider: Optional[object] = None,
+        use_graph_rag: bool = False,
+        cache: bool = True
     ):
-        self.tools = tools
         self.query = query
         self.video_id = video_id
         self.use_critic_agent = use_critic_agent
-        self.use_computer_vision_tool = use_computer_vision_tool
+        self.index_name = index_name
+        self.youtube_url = youtube_url
+        self.use_graph_rag = use_graph_rag
+        self.cache = cache
 
         # Initialize providers if not provided
         if llm_provider is None:
@@ -115,24 +105,44 @@ class VideoQnA:
                 autogen=True, service_provider=os.getenv("LLM_PROVIDER", "azure")
             ).get_client()
 
-        self.tools_list = []
+        # Only enable caching if cache parameter is True
+        if self.cache:
+            use_cache_backend = os.getenv("AUTOGEN_CACHE_BACKEND", "disk")  # "disk" or "redis"
+            if use_cache_backend.lower() == "redis":
+                # Shared cache across processes
+                from autogen_ext.cache_store.redis import RedisStore
+                import redis
+                redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+                redis_client = redis.from_url(redis_url)
+                store = RedisStore[CHAT_CACHE_VALUE_TYPE](redis_client)  # type: ignore
+            else:
+                # Local persistent cache
+                cache_dir = os.getenv("AUTOGEN_DISK_CACHE_DIR", "./.autogen_ext_cache")
+                store = DiskCacheStore[CHAT_CACHE_VALUE_TYPE](DiskCache(cache_dir))  # type: ignore
+
+            # Wrap the base model client so AgentChat uses the cached client everywhere
+            self.model_client = ChatCompletionCache(self.model_client, store)
+
+        self.tools = [get_context, get_relevant_frames, query_frame]
         self.planner_agent = None
         self.critic_agent = None
         self.team = None
 
-        self.task = f"query:{self.query}.,\nInstruction:video id:{self.video_id}"
-
-    async def _initialize_tools(self):
-        self.tools = list(self.tools.values())
+        self.task = (
+            f"query:{self.query}."
+            + (f"\nInstruction:video id:{self.video_id}" if self.video_id is not None else "")
+            + (f"\nyoutube url:{self.youtube_url}" if self.youtube_url is not None else "")
+            + (f"\nUse the index name:{self.index_name} to retrieve context.")
+            + (f"\n Set the use_graph_rag as True" if self.use_graph_rag else "")
+        )
 
     async def _initialize_agents(self):
-        # system prompt for video planner agent
+        # system prompt for video planner agent with comprehensive tool access
         planner_system_prompt = await get_planner_system_prompt(
-            use_computer_vision_tool=self.use_computer_vision_tool,
             use_critic_agent=self.use_critic_agent,
         )
 
-        # Define Planner agent
+        # Define Planner agent - has access to get_context, get_relevant_frames, and query_frame tools
         self.planner = AssistantAgent(
             name="planner",
             model_client=self.model_client,
@@ -141,12 +151,14 @@ class VideoQnA:
             system_message=(f"""{planner_system_prompt}"""),
             tools=self.tools,
             reflect_on_tool_use=True,
+            max_tool_iterations = 100,
+            handoffs=["critic"] if self.use_critic_agent else []
         )
-        
+
         text_mention_termination = TextMentionTermination("TERMINATE")
         max_messages_termination = MaxMessageTermination(max_messages=20)
         termination = text_mention_termination | max_messages_termination
-            
+
         if self.use_critic_agent:
             self.critic = AssistantAgent(
                 name="critic",
@@ -156,35 +168,27 @@ class VideoQnA:
                 system_message=(f"{CRITIC_AGENT_SYSTEM_PROMPT}"),
                 tools=[critic_tool],
                 reflect_on_tool_use=False,
+                handoffs=["planner"]
             )
 
-            selector_prompt = """Select an agent to perform task.
-
-                {roles}
-
-                base on the conversation history, select an agent from {participants} to perform the next task.
-                critic agent will come only when planner agent mentions `ready for criticism`.
-                Only select one agent.
-                """
-            self.team = SelectorGroupChat(
-                [self.planner, self.critic],
-                model_client=self.model_client,
-                termination_condition=termination,
-                allow_repeated_speaker=True,
-                #selector_prompt=selector_prompt,
+            self.team = Swarm(
+                participants=[self.planner, self.critic],
+                termination_condition=termination
             )
         else:
-            self.team = RoundRobinGroupChat(participants=[self.planner], termination_condition=termination)
+            self.team = RoundRobinGroupChat(
+                participants=[self.planner],
+                termination_condition=termination
+            )
 
     async def setup(self):
-        await self._initialize_tools()
         await self._initialize_agents()
-        
+
     async def calculate_total_tokens(self, messages) -> dict:
         """
         Calculates total input (prompt_tokens) and output (completion_tokens) tokens
         from a list of message objects from TaskResult containing `models_usage`.
-        
+
         Args:
             messages (list): List of message objects, each possibly containing `models_usage`.
 
@@ -195,15 +199,12 @@ class VideoQnA:
         total_output = 0
 
         for message in messages:
-            usage = getattr(message, 'models_usage', None)
+            usage = getattr(message, "models_usage", None)
             if usage:
-                total_input += getattr(usage, 'prompt_tokens', 0) or 0
-                total_output += getattr(usage, 'completion_tokens', 0) or 0
+                total_input += getattr(usage, "prompt_tokens", 0) or 0
+                total_output += getattr(usage, "completion_tokens", 0) or 0
 
-        return {
-            "total_input": total_input,
-            "total_output": total_output
-        }
+        return {"total_input": total_input, "total_output": total_output}
 
     async def run(self):
         """
@@ -211,82 +212,82 @@ class VideoQnA:
         """
         await self.setup()
 
-        if self.use_critic_agent:
-            result = await self.team.run(task=self.task)
-        else:
-            result = await self.team.run(task=self.task)
+        result = await self.team.run(task=self.task)
         tokens = await self.calculate_total_tokens(result.messages)
-        return {"result":result.messages[-1].content, "tokens":tokens}
+        return {"result": result.messages[-1].content, "tokens": tokens}
 
     async def run_stream(self):
-        logger.info("Initiating the stream")
         await self.setup()
-        if self.use_critic_agent:
-            return self.team.run_stream(task=self.task)
-        else:
-            return self.team.run_stream(task=self.task)
+        return self.team.run_stream(task=self.task)
 
 
 async def video_qna(
-    query: Annotated[
-        str, "The question to be answered based on the content of the video."
-    ],
-    video_id: Annotated[str, "The unique identifier of the video."],
-    tools: Annotated[list, "enum based tools"],
+    query: Annotated[str, "The question to be answered based on the content of the video."],
+    video_id: Annotated[str, "The unique identifier of the video."]=None,
+    youtube_url: Annotated[str, "The YouTube URL of the video."]=None,
     use_critic_agent: Annotated[
         bool, "Set to True to enable a critic agent that validates the response."
     ] = True,
-    use_computer_vision_tool: Annotated[bool, "whether to use computer vision service or not"] = True,
+    index_name: Annotated[
+        str, "Vector index name for context retrieval"
+    ] = "education-video-index-v2",
     stream: Annotated[bool, "Set to True to return the response as a stream."] = False,
     llm_provider: Optional[object] = None,
-    vision_provider: Optional[object] = None,
-    transcription_provider: Optional[object] = None
+    use_graph_rag: Annotated[bool, "Set to True to use GraphRAG for context retrieval."] = False,
+    cache: Annotated[bool, "Set to True to enable cache for model responses."] = True
 ):
     """
-    Answers a user query based on the content of a specified video.
+    Video QnA with comprehensive multi-tool support for video analysis using Swarm orchestration.
 
-    This tool combines various analysis components (e.g., transcript summarization, visual understanding)
-    to generate accurate responses. It supports optional response validation via a critic agent
-    and can operate in both standard and streaming modes.
+    Answers a user query based on the content of a specified video using three complementary tools:
+    1. get_context: Retrieves transcript and visual summary documents
+    2. get_relevant_frames: Gets specific frame names based on visual queries
+    3. query_frame: Analyzes downloaded frames with vision models
+
+    The planner intelligently combines textual and visual information for comprehensive responses.
+    With Swarm orchestration, agents can dynamically hand off tasks for better collaboration.
     """
-    tools = {name_: getattr(VideoQnaTools, name_).value[0] for name_ in tools}
-    await load_required_files(
-        session_id=video_id
-    )  # This downloads the required files from blob like frames, transcripts etc.
+
+
     video_qna_instance = VideoQnA(
         video_id=video_id,
+        youtube_url=youtube_url,
         query=query,
         use_critic_agent=use_critic_agent,
-        tools=tools,
-        use_computer_vision_tool=use_computer_vision_tool,
+        index_name=index_name,
+        use_graph_rag=use_graph_rag,
         llm_provider=llm_provider,
-        vision_provider=vision_provider,
-        transcription_provider=transcription_provider,
+        cache=cache,
     )
     if stream:
         response_generator = await video_qna_instance.run_stream()
+        #return response_generator
         messages = await Console(response_generator)
-        if isinstance(messages,TaskResult):
+        if isinstance(messages, TaskResult):
             return messages.messages[-1]
         return messages
     else:
         return await video_qna_instance.run()
-    
-if __name__=="__main__":
+
+
+if __name__ == "__main__":
     # Example usage - replace with your actual values
-    query = "Why is a 5x5 convolution used when transitioning to the first FC layer? Why is a 1x1 convolution used for the next layer in both the regression and classification heads?"
-    video_id = "8c91a475f19eec41c760979dd6db212ad7a1876f755906f0e6c933e339d96189"
-    use_computer_vision_tool = False
+    query = "<placeholder for query>"
+    # video_id = "<placeholder for hash video Id>" #Optional
+    # youtube_url = "<placeholder for youtube url>" #Optional
     use_critic_agent = True
     stream = True
-    tools = [
-        VideoQnaTools.GET_VIDEO_DESCRIPTION,
-        VideoQnaTools.QUERY_VIDEO_DESCRIPTION,
-        VideoQnaTools.QUERY_VISION_LLM]
-    if use_computer_vision_tool:
-        tools.append(VideoQnaTools.QUERY_FRAMES_COMPUTER_VISION)
-        
-    tools = [str(tool.name) for tool in tools]
-    
-    result = asyncio.run(video_qna(query=query, video_id=video_id, use_computer_vision_tool=use_computer_vision_tool, use_critic_agent=use_critic_agent, stream=stream ,tools=tools))
-    print(result)
+    index_name = "<placeholder for index name>"
+
+    result = asyncio.run(
+        video_qna(
+            query=query,
+            #video_id=video_id, #Optional
+            #youtube_url=youtube_url, #Optional
+            use_critic_agent=use_critic_agent,
+            stream=stream,
+            index_name=index_name,
+            use_graph_rag=False,
+            cache = False
+        )
+    )

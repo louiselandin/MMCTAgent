@@ -32,37 +32,37 @@ MMCTAgent is a state-of-the-art multi-modal AI framework that brings human-like 
 
 ### Why MMCTAgent?
 
-- **🧠 Human-like Reasoning**: Implements structured critical thinking with planning and critique phases
+- **🧠 Human-Inspired Critical Thinking**: MMCTAgent emulates human cognitive processes by iteratively analyzing multi-modal information, decomposing complex queries, planning strategies, and dynamically evolving its reasoning.
 - **🎯 Superior Performance**: Outperforms traditional approaches on complex visual reasoning benchmarks  
-- **🔧 Production Ready**: Enterprise-grade architecture with multi-cloud support and security features
-- **🚀 Easy Integration**: Modular design allows seamless integration into existing workflows
+- **🔬 Research-Driven Innovation**: Designed as a research framework, MMCTAgent integrates critical thinking elements such as verification of final answers and self-reflection through a novel approach that defines a vision-based critic and identifies task-specific evaluation criteria, thereby enhancing its decision-making abilities.
+- **🚀 Easy Integration**: Its modular design allows for easy integration into existing workflows, facilitating adoption across various domains requiring advanced visual reasoning capabilities.
 
 <p align="center">
   <a href="https://arxiv.org/abs/2405.18358">
-    <img src="docs/multimedia/VideoPipeline.webp" alt="Video Pipeline - Main Architecture" width="80%" />
+    <img src="docs/multimedia/VideoPipeline.webp" alt="Video Pipeline - Main Architecture" width="60%" />
   </a>
 </p>
 
 ## **Key Features**
 
-### Critical Thinking Architecture
+### **Critical Thinking Architecture**
 
 MMCTAgent is inspired by human cognitive processes and integrates a structured reasoning loop:
 
 - **Planner**:  
   Generates an initial response using relevant tools for visual or multi-modal inputs.
 
-- **Critic** *(optional)*:  
+- **Critic**:  
   Evaluates the Planner’s response and provides feedback to improve accuracy and decision-making.  
-  > The Critic is enabled by default. To disable, set `use_critic_agent=False`.
-
 ---
 
-### Modular Agents
+### **Modular Agents**
 
 MMCTAgent includes two specialized agents:
 
-#### ImageAgent
+<details>
+
+<summary>ImageAgent</summary>
 
 [![](docs/multimedia/imageAgent.webp)](https://arxiv.org/abs/2405.18358)
 
@@ -76,26 +76,23 @@ It supports a configurable set of tools via the `ImageQnaTools` enum:
 
 > The Critic can be toggled via `use_critic_agent` flag.
 
----
+</details>
 
-#### VideoAgent
-[![](docs/multimedia/videoPipeline.webp)](https://arxiv.org/abs/2405.18358)
+<details>
 
-Optimized for deep video understanding through a structured two-stage pipeline:
+<summary>VideoAgent</summary>
 
-1. **Video Retrieval**  
-   Uses an Azure AI Search index to fetch videos relevant to a user query.
+Optimized for deep video understanding:
 
-2. **Video Question Answering**  
+**Video Question Answering**  
 
 [![](docs/multimedia/videoAgent.webp)](https://arxiv.org/abs/2405.18358)
 
    Applies a fixed toolchain orchestrated by the Planner:
 
-   - `GET_VIDEO_DESCRIPTION` – Extracts transcript and visual summary.
-   - `QUERY_VIDEO_DESCRIPTION` – Finds top-3 relevant timestamps.
-   - `QUERY_FRAMES_COMPUTER_VISION` *(optional)* – Identifies visual cues.
-   - `QUERY_VISION_LLM` – Combines frame-level visual and textual analysis.
+   - `GET_CONTEXT` – Extracts transcript and visual summary chunks relevant to the query.
+   - `GET_RELEVANT_FRAMES` – Provides semantic similiar keyframes related to the query. This tool is based on the CLIP embedding.
+   - `QUERY_FRAME` – Queries specific video keyframes frames to extract detailed information to provide the additional visual context to the planner.
 
 > The Critic agent helps validate and refine answers, improving reasoning depth.
 
@@ -104,85 +101,27 @@ For more details, refer to the full research article:
 **[MMCTAgent: Multi-modal Critical Thinking Agent
  Framework for Complex Visual Reasoning](https://arxiv.org/abs/2405.18358)**  
 Published on **arXiv** – [arxiv.org/abs/2405.18358](https://arxiv.org/abs/2405.18358)
-
-## Citation
-
-If you find MMCTAgent useful in your research, please cite our paper:
-
-```bibtex
-@article{kumar2024mmctagent,
-  title={MMCTAgent: Multi-modal Critical Thinking Agent Framework for Complex Visual Reasoning},
-  author={Kumar, Somnath and Gadhia, Yash and Ganu, Tanuja and Nambi, Akshay},
-  journal={arXiv preprint arXiv:2405.18358},
-  year={2024},
-  url={https://arxiv.org/abs/2405.18358}
-}
-```
+</details>
 
 ---
 
 ## **Table of Contents**
 
-- [Provider System](#provider-system)
 - [Getting Started](#getting-started)
-- [Installation](#installation)
 - [Prerequisites](#prerequisites)
+- [Provider System](#provider-system)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Project Structure](#project-structure)
-
+- [Contributing](#contributing)
+- [Citations](#citation)
+- [License](#license)
+- [Support](#support)
 ---
 
-## **Provider System**
+## **Getting Started**
 
-### Multi-Cloud & Vendor-Agnostic Architecture
-
-MMCTAgent now features a **modular provider system** that allows you to seamlessly switch between different cloud providers and AI services without changing your application code. This makes the framework truly **vendor-agnostic** and suitable for various deployment scenarios.
-
-#### Supported Providers
-
-| Service Type | Supported Providers | Use Cases |
-|--------------|--------------------|-----------|
-| **LLM** | Azure OpenAI, OpenAI | Text generation, chat completion |
-| **Search** | Azure AI Search | Document search and retrieval |
-| **Vision** | Azure Computer Vision, OpenAI Vision | Image analysis, object detection |
-| **Transcription** | Azure Speech Services, OpenAI Whisper | Audio-to-text conversion |
-| **Storage** | Azure Blob Storage, Local Storage | File storage and management |
-
-#### Key Benefits
-
-- **🔄 Vendor Independence**: Switch between Azure, OpenAI, and other providers
-- **🛡️ Enhanced Security**: Built-in support for Managed Identity and Key Vault
-- **⚙️ Flexible Configuration**: Environment-based or programmatic configuration
-- **🔧 Easy Migration**: Backward compatibility with existing configurations
-- **📊 Centralized Management**: Single configuration point for all services
-
-#### Quick Provider Configuration
-
-```bash
-# Azure-first setup
-LLM_PROVIDER=azure
-SEARCH_PROVIDER=azure_ai_search
-VISION_PROVIDER=azure
-
-# OpenAI-first setup  
-LLM_PROVIDER=openai
-VISION_PROVIDER=openai
-TRANSCRIPTION_PROVIDER=openai
-
-# Hybrid setup
-LLM_PROVIDER=azure
-SEARCH_PROVIDER=elasticsearch
-VISION_PROVIDER=openai
-```
-
-For detailed configuration instructions, see our [Provider Configuration Guide](docs/PROVIDERS.md).
-
----
-
-## Getting Started
-
-### Quick Installation
+### **Installation**
 
 1. **Clone the Repository**
    ```bash
@@ -191,7 +130,9 @@ For detailed configuration instructions, see our [Provider Configuration Guide](
    ```
 
 2. **System Dependencies**
-   
+    
+   Install FFmpeg
+
    **Linux/Ubuntu:**
    ```bash
    sudo apt-get update
@@ -225,11 +166,33 @@ For detailed configuration instructions, see our [Provider Configuration Guide](
    pip install -r requirements.txt
    ```
 
-### Verify Installation
-```python
-from mmct.image_pipeline import ImageAgent
-print("✅ MMCTAgent installed successfully!")
-```
+## **Provider System**
+
+### **Multi-Cloud & Vendor-Agnostic Architecture**
+
+MMCTAgent now features a **modular provider system** that allows you to seamlessly switch between different cloud providers and AI services without changing your application code. This makes the framework truly **vendor-agnostic** and suitable for various deployment scenarios.
+
+#### **Supported Providers**
+
+| Service Type | Supported Providers | Use Cases |
+|--------------|--------------------|-----------|
+| **LLM** | Azure OpenAI, OpenAI | Text generation, chat completion |
+| **Search** | Azure AI Search | Document search and retrieval |
+| **Transcription** | Azure Speech Services, OpenAI Whisper | Audio-to-text conversion |
+| **Storage** | Azure Blob Storage, Local Storage | File storage and management |
+
+#### Key Benefits
+
+- **🔄 Vendor Independence**: Switch between Azure, OpenAI, and other providers
+- **🛡️ Enhanced Security**: Built-in support for Managed Identity and Key Vault
+- **⚙️ Flexible Configuration**: Environment-based or programmatic configuration
+- **🔧 Easy Migration**: Backward compatibility with existing configurations
+- **📊 Centralized Management**: Single configuration point for all services
+
+For detailed configuration instructions, see our [Provider Configuration Guide](docs/PROVIDERS.md).
+
+---
+
 
 ## **Prerequisites**
 
@@ -291,66 +254,11 @@ STORAGE_ACCOUNT_NAME=your-storage-account
 STORAGE_USE_MANAGED_IDENTITY=true
 ```
 
-**OpenAI Setup:**
-```bash
-# LLM Configuration
-LLM_PROVIDER=openai
-LLM_ENDPOINT=https://api.openai.com
-LLM_MODEL_NAME=gpt-4o
-OPENAI_API_KEY=your-openai-api-key
-
-# Vision Configuration
-VISION_PROVIDER=openai
-OPENAI_VISION_MODEL=gpt-4o
-
-# Transcription Configuration
-TRANSCRIPTION_PROVIDER=openai
-OPENAI_WHISPER_MODEL=whisper-1
-```
-
-**Hybrid Setup:**
-```bash
-# Use Azure for LLM
-LLM_PROVIDER=azure
-LLM_ENDPOINT=https://your-resource.openai.azure.com/
-
-# Use OpenAI for vision
-VISION_PROVIDER=openai
-OPENAI_API_KEY=your-openai-key
-
-# Use Elasticsearch for search
-SEARCH_PROVIDER=elasticsearch
-ELASTICSEARCH_ENDPOINT=https://your-elasticsearch.com
-```
-
-### Security Configuration
-
-#### Managed Identity (Recommended for Azure)
-```bash
-LLM_USE_MANAGED_IDENTITY=true
-SEARCH_USE_MANAGED_IDENTITY=true
-STORAGE_USE_MANAGED_IDENTITY=true
-```
-
-#### Azure Key Vault (Production)
-```bash
-ENABLE_SECRETS_MANAGER=true
-KEYVAULT_URL=https://your-keyvault.vault.azure.net/
-```
-
-### Logging Configuration
-```bash
-LOG_LEVEL=INFO
-LOG_ENABLE_FILE=true
-LOG_ENABLE_JSON=false
-LOG_MAX_FILE_SIZE=10 MB
-```
-
 📖 **For comprehensive configuration options, see our [Provider Configuration Guide](docs/PROVIDERS.md)**
 
-## Usage
+## **Usage**
 
-### Quick Start Examples
+### **Quick Start Examples**
 
 #### Image Analysis with MMCTAgent
 
@@ -380,16 +288,18 @@ import asyncio
 
 # Configure the Video Agent
 video_agent = VideoAgent(
-    query="Explain the main events in this video",
-    index_name="your-search-index",  # Azure AI Search index
-    top_n=3,  # Number of relevant videos to analyze
-    use_computer_vision_tool=True,   # Enable visual analysis
-    use_critic_agent=True,           # Enable critical review
-    stream=True                      # Stream progress logs
+    query="input-query",
+    index_name="your-index-name",
+    video_id=None,  # Optional: specify video ID
+    youtube_url=None,  # Optional: YouTube URL
+    use_critic_agent=True,  # Enable critic agent
+    stream=False,  # Stream response
+    use_graph_rag=False,  # Optional: use graph RAG
+    cache=False  # Optional: enable caching
 )
 
 # Execute video analysis
-response = asyncio.run(video_agent())
+response = await video_agent()
 print(f"Video Analysis: {response}")
 ```
 
@@ -422,11 +332,11 @@ MMCTAgent
 └── README.md  
 ```
 
-## Contributing
+## **Contributing**
 
 We welcome contributions from the community! MMCTAgent is an open-source project and we encourage you to help make it better.
 
-### How to Contribute
+#### Steps to Contribute
 
 1. **Fork the Repository**: Click the "Fork" button on GitHub
 2. **Create a Feature Branch**: `git checkout -b feature/your-feature-name`
@@ -434,43 +344,32 @@ We welcome contributions from the community! MMCTAgent is an open-source project
 4. **Add Tests**: Ensure your changes are well-tested
 5. **Submit a Pull Request**: Describe your changes and submit for review
 
-### Development Setup
 
-```bash
-# Clone your fork
-git clone https://github.com/your-username/MMCTAgent.git
-cd MMCTAgent
+## **Citation**
 
-# Install development dependencies
-pip install -r requirements-dev.txt
+If you find MMCTAgent useful in your research, please cite our paper:
 
-# Run tests
-python -m pytest tests/
+```bibtex
+@article{kumar2024mmctagent,
+  title={MMCTAgent: Multi-modal Critical Thinking Agent Framework for Complex Visual Reasoning},
+  author={Kumar, Somnath and Gadhia, Yash and Ganu, Tanuja and Nambi, Akshay},
+  journal={arXiv preprint arXiv:2405.18358},
+  year={2024},
+  url={https://arxiv.org/abs/2405.18358}
+}
 ```
 
-### Reporting Issues
-
-- Use GitHub Issues to report bugs or request features
-- Provide clear, detailed descriptions with reproducible examples
-- Check existing issues to avoid duplicates
-
-## License
+## **License**
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
 
-- Built with support from Microsoft Research
-- Thanks to all contributors and the open-source community
-- Special recognition to the authors of the foundational research
 
-## Support
+## **Support**
 
-- 📖 [Documentation](docs/)
-- 🐛 [Report Issues](https://github.com/microsoft/MMCTAgent/issues)
-- 💬 [Discussions](https://github.com/microsoft/MMCTAgent/discussions)
-- 📧 Contact: [Research Team](mailto:mmctagent@microsoft.com)
-
+- [Documentation](docs/)
+- [Report Issues](https://github.com/microsoft/MMCTAgent/issues)
+- [Discussions](https://github.com/microsoft/MMCTAgent/discussions)
 ---
 
 <div align="center">
