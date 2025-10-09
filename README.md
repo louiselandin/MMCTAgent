@@ -110,7 +110,6 @@ Published on **arXiv** – [arxiv.org/abs/2405.18358](https://arxiv.org/abs/2405
 - [Getting Started](#getting-started)
 - [Provider System](#provider-system)
 - [Configuration](#configuration)
-- [Usage](#usage)
 - [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [Citations](#citation)
@@ -165,7 +164,29 @@ Published on **arXiv** – [arxiv.org/abs/2405.18358](https://arxiv.org/abs/2405
    pip install -r requirements.txt
    ```
 
-5. **Usage**
+5. **Quick Start Examples**
+
+#### Image Analysis with MMCTAgent
+
+```python
+from mmct.image_pipeline import ImageAgent, ImageQnaTools
+import asyncio
+
+# Initialize the Image Agent with desired tools
+image_agent = ImageAgent(
+    query="What objects are visible in this image and what text can you read?",
+    image_path="path/to/your/image.jpg",
+    tools=[ImageQnaTools.OBJECT_DETECTION, ImageQnaTools.OCR, ImageQnaTools.VIT],
+    use_critic_agent=True,  # Enable critical thinking
+    stream=False
+)
+
+# Run the analysis
+response = asyncio.run(image_agent())
+print(f"Analysis Result: {response.response}")
+```
+
+#### Video Analysis with VideoAgent.
 
 Ingest a video through MMCT Video Ingestion Pipeline.
 
@@ -193,7 +214,7 @@ video_agent = VideoAgent(
     query="input-query",
     index_name="your-index-name",
     video_id=None,  # Optional: specify video ID
-    youtube_url=None,  # Optional: YouTube URL
+    url=None,  # Optional: URL to filter out the search results for given url
     use_critic_agent=True,  # Enable critic agent
     stream=False,  # Stream response
     use_graph_rag=False,  # Optional: use graph RAG
@@ -204,6 +225,8 @@ video_agent = VideoAgent(
 response = await video_agent()
 print(f"Video Analysis: {response}")
 ```
+
+For more comprehensive examples, see the [`examples/`](examples/) directory.
 
 ## **Provider System**
 
@@ -284,55 +307,6 @@ STORAGE_USE_MANAGED_IDENTITY=true
 ```
 
 📖 **For comprehensive configuration options, see our [Provider Configuration Guide](docs/PROVIDERS.md)**
-
-## **Usage**
-
-### **Quick Start Examples**
-
-#### Image Analysis with MMCTAgent
-
-```python
-from mmct.image_pipeline import ImageAgent, ImageQnaTools
-import asyncio
-
-# Initialize the Image Agent with desired tools
-image_agent = ImageAgent(
-    query="What objects are visible in this image and what text can you read?",
-    image_path="path/to/your/image.jpg",
-    tools=[ImageQnaTools.OBJECT_DETECTION, ImageQnaTools.OCR, ImageQnaTools.VIT],
-    use_critic_agent=True,  # Enable critical thinking
-    stream=False
-)
-
-# Run the analysis
-response = asyncio.run(image_agent())
-print(f"Analysis Result: {response.response}")
-```
-
-#### Video Understanding with MMCTAgent
-
-```python
-from mmct.video_pipeline import VideoAgent
-import asyncio
-
-# Configure the Video Agent
-video_agent = VideoAgent(
-    query="input-query",
-    index_name="your-index-name",
-    video_id=None,  # Optional: specify video ID
-    youtube_url=None,  # Optional: YouTube URL
-    use_critic_agent=True,  # Enable critic agent
-    stream=False,  # Stream response
-    use_graph_rag=False,  # Optional: use graph RAG
-    cache=False  # Optional: enable caching
-)
-
-# Execute video analysis
-response = await video_agent()
-print(f"Video Analysis: {response}")
-```
-
-For more comprehensive examples, see the [`examples/`](examples/) directory.
 
 ## **Project Structure**
 
