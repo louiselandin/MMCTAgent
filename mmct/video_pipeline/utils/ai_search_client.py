@@ -510,26 +510,6 @@ class AISearchDocument(BaseModel):
         facetable=False,
         key=False
     )
-    blob_transcript_and_summary_file_url: str = Field(
-        ...,
-        searchable=False,
-        filterable=False,
-        retrievable=True,
-        stored=True,
-        sortable=False,
-        facetable=False,
-        key=False
-    )
-    blob_timestamps_file_url: str = Field(
-        ...,
-        searchable=False,
-        filterable=False,
-        retrievable=True,
-        stored=True,
-        sortable=False,
-        facetable=False,
-        key=False
-    )
     blob_frames_folder_path: str = Field(
         ...,
         searchable=False,

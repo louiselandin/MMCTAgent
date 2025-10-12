@@ -330,67 +330,6 @@ async def format_transcript(transcript: str):
     )
     return [f"{timestamp} {text.strip()}" for timestamp, text in segments]
 
-
-async def calculate_time_differences(strings, seconds_per_frame):
-    """
-    Calculates time differences between transcript timestamps.
-
-    Args:
-        strings (list): List of subtitle timestamps.
-        seconds_per_frame (int): Frame extraction interval.
-
-    Returns:
-        list: Adjusted time differences for each segment.
-    """
-    
-    time_differences = []
-    actual_time_differences = []
-
-    for i, string in enumerate(strings):
-        timestamps = re.findall(r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})", string)
-
-        if not timestamps:
-            continue
-
-        start_timestamp_str, end_timestamp_str = timestamps[0]
-        start_timestamp_str = start_timestamp_str.replace(",", ".")
-        end_timestamp_str = end_timestamp_str.replace(",", ".")
-
-        start_timestamp = datetime.strptime(start_timestamp_str, "%H:%M:%S.%f")
-        end_timestamp = datetime.strptime(end_timestamp_str, "%H:%M:%S.%f")
-
-        time_diff = (end_timestamp - start_timestamp).total_seconds()
-        rounded_diff = math.ceil(time_diff / seconds_per_frame) * seconds_per_frame if seconds_per_frame > 1 else round(time_diff)
-
-        actual_time_differences.append(time_diff)
-        time_differences.append(rounded_diff)
-
-    return time_differences
-
-
-async def fetch_frames_based_on_counts(frame_counts, image_frames, seconds_per_frame):
-    """
-    Fetches frames based on calculated time differences.
-
-    Args:
-        frame_counts (list): List of frame count intervals.
-        image_frames (list): List of extracted frames.
-        seconds_per_frame (int): Interval used for frame extraction.
-
-    Returns:
-        list: Frames grouped per transcript section.
-    """
-    start_index = 0
-    frames_per_cluster = []
-
-    for count in frame_counts:
-        end_index = start_index + (int(count / seconds_per_frame) if seconds_per_frame > 1 else count)
-        frames_per_cluster.append(image_frames[start_index:end_index])
-        start_index = end_index
-
-    return frames_per_cluster
-
-
 async def parse_timestamp_to_seconds(timestamp: str) -> float:
     """
     Convert timestamp (HH:MM:SS,mmm) to seconds.

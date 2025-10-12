@@ -71,7 +71,7 @@ class KeyframeSearchIndex:
                 SearchableField(name="keyframe_filename", type=SearchFieldDataType.String,
                               filterable=True, facetable=True),
                 SearchField(name="clip_embedding", type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-                           searchable=True, retrievable=True, vector_search_dimensions=512,
+                           searchable=True, retrievable=False, vector_search_dimensions=512,
                            vector_search_profile_name="clip-profile"),
                 SimpleField(name="created_at", type=SearchFieldDataType.DateTimeOffset,
                            filterable=True, sortable=True),
@@ -81,8 +81,12 @@ class KeyframeSearchIndex:
                            filterable=True, sortable=True),
                 SimpleField(name="blob_url", type=SearchFieldDataType.String,
                            retrievable=True),
-                SimpleField(name="frame_path", type=SearchFieldDataType.String,
-                           retrievable=True)
+                SimpleField(name="parent_id", type=SearchFieldDataType.String,
+                           filterable=True, retrievable=True),
+                SimpleField(name="parent_duration", type=SearchFieldDataType.Double,
+                           filterable=True, sortable=True, retrievable=True),
+                SimpleField(name="video_duration", type=SearchFieldDataType.Double,
+                           filterable=True, sortable=True, retrievable=True)
             ]
 
             # Configure vector search for CLIP embeddings
@@ -134,7 +138,10 @@ class KeyframeSearchIndex:
             raise
 
     def create_frame_documents(self, frame_embeddings: List[FrameEmbedding],
-                             video_id: str, video_path: str) -> List[Dict[str, Any]]:
+                             video_id: str, video_path: str,
+                             parent_id: Optional[str] = None,
+                             parent_duration: Optional[float] = None,
+                             video_duration: Optional[float] = None) -> List[Dict[str, Any]]:
         """
         Create search documents from frame embeddings.
 
@@ -142,6 +149,9 @@ class KeyframeSearchIndex:
             frame_embeddings: List of FrameEmbedding objects
             video_id: Unique video identifier
             video_path: Path to the video file
+            parent_id: Parent video ID (original video before splitting)
+            parent_duration: Duration of parent video in seconds
+            video_duration: Duration of this video part in seconds
 
         Returns:
             List of document dictionaries ready for Azure AI Search
@@ -165,7 +175,9 @@ class KeyframeSearchIndex:
                 "motion_score": float(frame_embedding.frame_metadata.motion_score),
                 "timestamp_seconds": float(frame_embedding.frame_metadata.timestamp_seconds),
                 "blob_url": "",  # TODO: Add blob URL if needed
-                "frame_path": frame_embedding.frame_path
+                "parent_id": parent_id if parent_id else video_id,
+                "parent_duration": parent_duration if parent_duration is not None else 0.0,
+                "video_duration": video_duration if video_duration is not None else 0.0
             }
 
             documents.append(document)
@@ -173,7 +185,10 @@ class KeyframeSearchIndex:
         return documents
 
     async def upload_frame_embeddings(self, frame_embeddings: List[FrameEmbedding],
-                                    video_id: str, video_path: str) -> bool:
+                                    video_id: str, video_path: str,
+                                    parent_id: Optional[str] = None,
+                                    parent_duration: Optional[float] = None,
+                                    video_duration: Optional[float] = None) -> bool:
         """
         Upload frame embeddings to the search index.
 
@@ -181,6 +196,9 @@ class KeyframeSearchIndex:
             frame_embeddings: List of FrameEmbedding objects
             video_id: Unique video identifier
             video_path: Path to the video file
+            parent_id: Parent video ID (original video before splitting)
+            parent_duration: Duration of parent video in seconds
+            video_duration: Duration of this video part in seconds
 
         Returns:
             bool: True if successful, False otherwise
@@ -198,7 +216,10 @@ class KeyframeSearchIndex:
                 # Continue with upload anyway - index might already exist
 
             # Create documents
-            documents = self.create_frame_documents(frame_embeddings, video_id, video_path)
+            documents = self.create_frame_documents(
+                frame_embeddings, video_id, video_path,
+                parent_id, parent_duration, video_duration
+            )
 
             # Upload in batches with authentication retry
             batch_size = 100

@@ -349,7 +349,10 @@ class IngestionPipeline:
                 success = await keyframe_search_index.upload_frame_embeddings(
                     frame_embeddings=context.frame_embeddings,
                     video_id=context.hash_id,
-                    video_path=context.video_path
+                    video_path=context.video_path,
+                    parent_id=context.parent_id,
+                    parent_duration=context.parent_duration,
+                    video_duration=context.video_duration
                 )
 
                 if success:
@@ -549,14 +552,16 @@ class IngestionPipeline:
             
             # Get blob manager
             blob_manager = await self._get_blob_manager()
-            
+
+            # Set keyframes blob URL
+            context.blob_urls["keyframes_blob_folder_url"] = blob_manager.get_blob_url(
+                container=self.keyframe_container, blob_name=f"keyframes/{context.hash_id}"
+            )
+
             # Run functional pipeline methods
             context = await self.get_transcription(context, blob_manager)
             self.logger.info(f"Transcript generated for part {part_hash_id}")
-            
-            context = await self._get_frames_timestamps(context, blob_manager)
-            self.logger.info(f"Frames and timestamps generated for part {part_hash_id}")
-            
+
             # Upload video part to blob
             context.video_url = await file_upload_to_blob(
                 file_path=context.video_path,
@@ -572,9 +577,6 @@ class IngestionPipeline:
     
             if not context.is_already_ingested:
                 self.logger.info(f"Chapter generated for part {part_hash_id}")
-
-                context = await self._merge_visual_summary_with_transcript(context, blob_manager)
-                self.logger.info(f"Visual summary merged for part {part_hash_id}")
 
             # Upload files in batches
             for batch in chunked(context.pending_upload_tasks, 20):
@@ -603,7 +605,7 @@ class IngestionPipeline:
                     self.logger.warning(f"Failed to remove local resource {resource_path}: {e}")
             
             # Clean up context variables
-            del context.frames, context.timestamps, context.base64_frames, context.video_url
+            del context.video_url
             gc.collect()
             
             self.logger.info(f"Successfully processed video part: {part_hash_id}")
@@ -718,16 +720,6 @@ class IngestionPipeline:
                 "Logged the transcript blob url to the blob urls mapping dictionary"
             )
 
-            context.blob_urls["transcript_and_summary_file_url"] = (
-                blob_manager.get_blob_url(
-                    container=self.video_description_container_name,
-                    blob_name=f"{context.hash_id}.json",
-                )
-            )
-            self.logger.info(
-                "Logged the transcript and summary file url to the blob urls mapping dictionary"
-            )
-
             context.local_resources.extend(local_paths)
             del local_paths
             gc.collect()
@@ -787,7 +779,6 @@ class IngestionPipeline:
                 hash_id=context.hash_id,
                 index_name=self.index_name,
                 transcript=context.transcript,
-                base64Frames=context.base64_frames,
                 blob_urls=context.blob_urls,
                 frame_stacking_grid_size=self.frame_stacking_grid_size,
                 parent_id=context.parent_id,
@@ -808,81 +799,6 @@ class IngestionPipeline:
         except Exception as e:
             self.logger.exception(
                 f"Exception occured while creating an instance of SemanticChunking class: {e}"
-            )
-            raise
-
-    async def _get_frames_timestamps(self, context: ProcessingContext, blob_manager) -> ProcessingContext:
-        """Extract frames and timestamps from video - functional version."""
-        try:
-            self.logger.info("Extracting frames and timestamps from the video...")
-            context.frames, context.timestamps = await extract_frames(
-                video_path=context.video_path
-            )
-            self.logger.info(
-                "Successfully extracted the frames and timestamps from the video!"
-            )
-
-            self.logger.info("Encoding frames to base64...")
-            context.base64_frames = await encode_frames_to_base64(context.frames)
-            self.logger.info("Successfully converted frames to base64 strings!")
-
-            self.logger.info("Saving frames as png files")
-            png_paths = await save_frames_as_png(
-                context.frames,
-                os.path.join(await get_media_folder(), f"Frames", context.hash_id),
-            )
-            context.local_resources.extend(png_paths)  # Track for cleanup
-            self.logger.info("Successfully saved the frames")
-
-            # Add keyframes to pending upload tasks (will be uploaded later with other files)
-            self.logger.info("Adding keyframes to pending upload tasks...")
-            await self._add_keyframes_to_upload_tasks(context, blob_manager)
-            self.logger.info("Keyframes added to pending upload tasks list")
-
-            self.logger.info("Saving the timestamps file to the local directory")
-            async with aiofiles.open(
-                os.path.join(
-                    await get_media_folder(), f"timestamps_{context.hash_id}.txt"
-                ),
-                "w",
-                encoding="utf-8",
-            ) as f:
-                await f.write("\n".join(map(str, context.timestamps)))
-            self.logger.info(
-                f"Successfully saved the timestamps file to the local directory: timestamps_{context.hash_id}.txt"
-            )
-
-            context.pending_upload_tasks.append(
-                blob_manager.upload_file(
-                    container=self.timestamps_container,
-                    blob_name=f"timestamps_{context.hash_id}.txt",
-                    file_path=os.path.join(
-                        await get_media_folder(), f"timestamps_{context.hash_id}.txt"
-                    ),
-                )
-            )
-            self.logger.info("Logged the timestamps file to pending upload tasks list")
-
-            context.blob_urls["keyframes_blob_folder_url"] = blob_manager.get_blob_url(
-                container=self.keyframe_container, blob_name=f"keyframes/{context.hash_id}"
-            )
-            self.logger.info(
-                "Successfully logged the keyframes blob folder path url to the blob urls mapping dictionary!"
-            )
-            context.blob_urls["timestamps_blob_url"] = blob_manager.get_blob_url(
-                container=self.timestamps_container,
-                blob_name=f"timestamps_{context.hash_id}.txt",
-            )
-            self.logger.info(
-                "Successfully logged the timestamps blob url to the blob urls mapping dictionary!"
-            )
-
-            del png_paths
-            gc.collect()
-            return context
-        except Exception as e:
-            self.logger.exception(
-                f"Exception occured while generating the frames and timestamps from video: {e}"
             )
             raise
 
@@ -1022,13 +938,16 @@ class IngestionPipeline:
                 # Get blob manager
                 blob_manager = await self._get_blob_manager()
 
+                # Set keyframes blob URL
+                context.blob_urls["keyframes_blob_folder_url"] = blob_manager.get_blob_url(
+                    container=self.keyframe_container, blob_name=f"keyframes/{context.hash_id}"
+                )
+
                 # Run functional pipeline methods
                 context = await self.get_transcription(context, blob_manager)
                 self.logger.info("Transcript Generated!")
 
-                context = await self._get_frames_timestamps(context, blob_manager)
-                self.logger.info("Frames and Timestamps Generated!")
-                
+
                 # Upload video to blob
                 context.video_url = await file_upload_to_blob(
                     file_path=context.video_path,
@@ -1046,9 +965,6 @@ class IngestionPipeline:
                     self.logger.info(
                     "Chapter generated for the visual summary and successfully ingested to index!"
                     )
-
-                    context = await self._merge_visual_summary_with_transcript(context, blob_manager)
-                    self.logger.info("Successfully merged Summary & transcript file!")
 
                 # Upload files in batches
                 for batch in chunked(context.pending_upload_tasks, 5):
@@ -1079,7 +995,7 @@ class IngestionPipeline:
                         self.logger.warning(f"Failed to remove local resource {resource_path}: {e}")
                 
                 # Clean up context variables
-                del context.frames, context.timestamps, context.base64_frames, context.video_url
+                del context.video_url
                 gc.collect()
             
             # Clean up split video files if any were created
@@ -1200,14 +1116,16 @@ class IngestionPipeline:
         try:
             # Get blob manager
             blob_manager = await self._get_blob_manager()
-            
+
+            # Set keyframes blob URL
+            context.blob_urls["keyframes_blob_folder_url"] = blob_manager.get_blob_url(
+                container=self.keyframe_container, blob_name=f"keyframes/{context.hash_id}"
+            )
+
             # Run functional pipeline methods
             context = await self.get_transcription(context, blob_manager)
             self.logger.info("Transcript Generated!")
-            
-            context = await self._get_frames_timestamps(context, blob_manager)
-            self.logger.info("Frames and Timestamps Generated!")
-            
+
             # Upload video to blob
             context.video_url = await file_upload_to_blob(
                 file_path=context.video_path,
@@ -1225,9 +1143,6 @@ class IngestionPipeline:
                 self.logger.info(
                 "Chapter generated for the visual summary and successfully ingested to index!"
                 )
-
-                context = await self._merge_visual_summary_with_transcript(context, blob_manager)
-                self.logger.info("Successfully merged Summary & transcript file!")
 
             # Upload files in batches
             for batch in chunked(context.pending_upload_tasks, 5):
@@ -1260,18 +1175,18 @@ class IngestionPipeline:
 
 if __name__ == "__main__":
     # Example usage - replace with your actual values
-    video_path = "/home/v-amanpatkar/work/demo/Vector Spaces Introduction.mp4"
-    index = "nptel"
+    video_path = "/home/v-amanpatkar/work/demo/videoplayback.mp4"
+    index = "nptel_test"
     youtube_url = "https://www.youtube.com/watch?v=mSDU6PTFI3o"
     source_language = Languages.ENGLISH_UNITED_STATES
-    transcript_path = "/home/v-amanpatkar/work/demo/transcript/Vector Spaces Introduction.srt"
+   # transcript_path = "/home/v-amanpatkar/work/demo/transcript/Vector Spaces Introduction.srt"
     ingestion = IngestionPipeline(
         video_path=video_path,
         index_name=index,
         youtube_url=youtube_url,
         transcription_service=TranscriptionServices.AZURE_STT,
-        #language=source_language,
-        transcript_path=transcript_path
+        language=source_language,
+        #transcript_path=transcript_path
 
     )
     asyncio.run(ingestion())

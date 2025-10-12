@@ -1,11 +1,18 @@
 import os
+import re
+import base64
+from datetime import time
 from typing import List, Dict, Any, Union, Optional
+from PIL import Image
 from mmct.llm_client import LLMClient
 from mmct.video_pipeline.core.ingestion.models import (
     ChapterCreationResponse,
     SubjectVarietyResponse,
 )
+from azure.identity import AzureCliCredential, DefaultAzureCredential
+from mmct.video_pipeline.utils.helper import get_media_folder
 from mmct.video_pipeline.utils.helper import create_stacked_frames_base64
+from azure.search.documents.aio import SearchClient
 from loguru import logger
 from dotenv import load_dotenv, find_dotenv
 
@@ -19,7 +26,69 @@ class ChapterGeneration:
             service_provider=os.getenv("LLM_PROVIDER", "azure"), isAsync=True
         ).get_client()
         self.frame_stacking_grid_size = frame_stacking_grid_size
+        self.index_client = SearchClient(
+            endpoint=os.getenv("SEARCH_SERVICE_ENDPOINT"),
+            index_name="keyframes-nptel_test",
+            credential=self._get_credential()
+        )
 
+    def _get_credential(self):
+        try:
+            cli_credential = AzureCliCredential()
+            cli_credential.get_token("https://search.azure.com/.default")
+            return cli_credential
+        except Exception:
+            return DefaultAzureCredential()
+
+    async def _get_frames(self, transcript_seg:str, video_id: str) -> List[str]:
+        """
+        Fetch and load video frames for a transcript segment.
+
+        Args:
+            transcript_seg (str): Transcript segment with timestamps (HH:MM:SS,mmm --> HH:MM:SS,mmm text).
+            video_id (str): Unique video identifier.
+
+        Returns:
+            List[str]: List of base64 encoded frame images.
+        """
+        frames_file_name = []
+        match = re.search(r'(\d{2}:\d{2}:\d{2}),\d+\s*-->\s*(\d{2}:\d{2}:\d{2}),\d+', transcript_seg)
+        start_time, end_time = match.groups()
+        # Convert string timestamps to time objects if needed
+        if isinstance(start_time, str):
+            start_time = time.fromisoformat(start_time)
+        if isinstance(end_time, str):
+            end_time = time.fromisoformat(end_time)
+
+        # Convert time objects to seconds
+        start_seconds = start_time.hour * 3600 + start_time.minute * 60 + start_time.second
+        end_seconds = end_time.hour * 3600 + end_time.minute * 60 + end_time.second
+
+        time_filter = f"timestamp_seconds ge {start_seconds} and timestamp_seconds le {end_seconds}"
+        video_filter = f"video_id eq '{video_id}'"
+        combined_filter = f"{time_filter} and {video_filter}"
+
+        results = await self.index_client.search(
+        search_text="*",
+        filter=combined_filter,
+        order_by=["created_at asc"])
+
+        async for result in results:
+            frames_file_name.append(result['keyframe_filename'])
+
+        # Load the keyframes from local
+        base_dir = await get_media_folder()
+        frames_file_paths = [os.path.join(base_dir, "keyframes", video_id, fname) for fname in frames_file_name]
+
+        # Load and convert to base64 directly
+        base64_frames = []
+        for fpath in frames_file_paths:
+            if os.path.exists(fpath):
+                with open(fpath, "rb") as img_file:
+                    base64_frames.append(base64.b64encode(img_file.read()).decode("utf-8"))
+
+        return base64_frames
+        
     async def subject_and_variety(self, transcript: str) -> str:
         """
         Extract subject and variety information from a video transcript using an AI model.
@@ -78,7 +147,7 @@ class ChapterGeneration:
     async def Chapters_creation(
         self,
         transcript: str,
-        frames: List[str],
+        video_id: str,
         categories: str,
         subject_variety: str,
     ) -> ChapterCreationResponse:
@@ -86,8 +155,8 @@ class ChapterGeneration:
         Extract chapter information from video frames and transcript.
 
         Args:
-            transcript (str): The video transcript text
-            frames (List[str]): List of Base64 encoded frame images
+            transcript (str): The video transcript text with timestamps
+            video_id (str): Unique video identifier
             categories (str): Category and subcategory information in JSON format
             subject_variety (str): Subject and variety information in JSON format
 
@@ -95,6 +164,7 @@ class ChapterGeneration:
             ChapterCreationResponse: A Pydantic model instance containing chapter information
         """
         try:
+            frames = await self._get_frames(transcript, video_id)
             # Apply frame stacking if enabled (grid_size > 1)
             if self.frame_stacking_grid_size > 1 and len(frames) > self.frame_stacking_grid_size:
                 logger.info(f"Applying frame stacking with grid_size={self.frame_stacking_grid_size}")
