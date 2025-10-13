@@ -693,14 +693,14 @@ async def remove_file(video_id):
                 print(f"Trying to remove directory: {local_path}")
                 if os.path.exists(local_path):
                     shutil.rmtree(local_path)
+                    print(f"Successfully removed directory: {local_path}")
             except Exception as e:
                 print(f"Error deleting directory {local_path}: {e}")
-                    
-        keyframes_dir_name = f"media/relevant_frames/{video_id}"
-       
-        #frames_dir_name = f"Frames/{video_id}"
+
+        # Remove keyframes directory
+        keyframes_dir_name = f"keyframes/{video_id}"
         await remove_dir(keyframes_dir_name)
-        
+
         print("All files and directories removed successfully!")
         
     except Exception as e:
