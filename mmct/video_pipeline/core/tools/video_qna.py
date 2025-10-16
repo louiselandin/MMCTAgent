@@ -19,7 +19,6 @@ from autogen_agentchat.base import TaskResult
 from mmct.video_pipeline.core.tools.get_context import get_context
 from mmct.video_pipeline.core.tools.get_relevant_frames import get_relevant_frames
 from mmct.video_pipeline.core.tools.query_frame import query_frame
-
 from mmct.video_pipeline.core.tools.critic import critic_tool
 from mmct.video_pipeline.prompts_and_description import (
     get_planner_system_prompt,
@@ -69,7 +68,7 @@ class VideoQnA:
         query (str): The natural language question to be answered based on the video content.
         video_id (str): The unique identifier of the video.
         use_critic_agent (bool, optional): Whether to use the critic agent for answer refinement. Defaults to True.
-        index_name (str, optional): Vector index name for context retrieval. Defaults to "education-video-index-v2".
+        index_name (str, optional): Vector index name for context retrieval.
     """
 
     def __init__(
@@ -78,7 +77,7 @@ class VideoQnA:
         video_id:  Optional[str] = None,
         url:  Optional[str] = None,
         use_critic_agent: bool = True,
-        index_name: str = "education-video-index-v2",
+        index_name: str = None,
         llm_provider: Optional[object] = None,
         use_graph_rag: bool = False,
         cache: bool = True
