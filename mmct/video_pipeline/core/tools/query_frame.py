@@ -55,13 +55,14 @@ async def download_and_encode_blob(blob_name: str, container_name: str) -> Optio
         return None
 
 async def query_frame(
-    query: Annotated[str, "user query according to which video content has to be analyzed"],
+    query: Annotated[str, "user query according to which video content has to be analyzeds. e.g. 'What materials are required to prepare the chilly nursery bed, and what are their uses?'"],
     frame_ids: Annotated[Optional[list], "List of specific frame filenames to analyze (e.g., ['video_123.jpg', 'video_456.jpg'])"] = None,
     video_id: Annotated[Optional[str], "Unique video identifier hash for frame retrieval"] = None,
     timestamps: Annotated[Optional[list], "List of time range pairs in HH:MM:SS format, e.g., [['00:07:45', '00:09:44'], ['00:21:22', '00:23:17']]"] = None
 ) -> str:
     """
-    This is query_frame tool with optimized I/O operations.
+    This is query_frame tool which takes a user query and either specific frame IDs or
+    timestamps to search for relevant frames in a video.
     """
 
     # Handle video_id validation and truncation for compatibility
