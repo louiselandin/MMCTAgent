@@ -115,6 +115,7 @@ Description: This tool retrieves relevant frame names from the video based on a 
 
 Tool: query_frame -> str:
 Description: This tool analyzes frames or frames around timestamps with vision models based on a user query. It returns a text response to the query based on the visual content of the frames.
+query should be very specific according to what user has asked specifically.
 </tool>
 
 You must analyze the logs based on the following criteria:

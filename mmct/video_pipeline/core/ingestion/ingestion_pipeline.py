@@ -357,8 +357,8 @@ class IngestionPipeline:
 
                 if success:
                     self.logger.info("Successfully stored frame embeddings to search index")
-                # else:
-                    # self.logger.error("Failed to store frame embeddings to search index")
+                else:
+                    self.logger.error("Failed to store frame embeddings to search index")
 
             finally:
                 await keyframe_search_index.close()

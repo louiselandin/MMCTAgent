@@ -55,7 +55,7 @@ async def download_and_encode_blob(blob_name: str, container_name: str) -> Optio
         return None
 
 async def query_frame(
-    query: Annotated[str, "Natural language question about video content to analyze"],
+    query: Annotated[str, "user query according to which video content has to be analyzed"],
     frame_ids: Annotated[Optional[list], "List of specific frame filenames to analyze (e.g., ['video_123.jpg', 'video_456.jpg'])"] = None,
     video_id: Annotated[Optional[str], "Unique video identifier hash for frame retrieval"] = None,
     timestamps: Annotated[Optional[list], "List of time range pairs in HH:MM:SS format, e.g., [['00:07:45', '00:09:44'], ['00:21:22', '00:23:17']]"] = None
