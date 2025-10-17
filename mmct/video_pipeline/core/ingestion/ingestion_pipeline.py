@@ -163,7 +163,7 @@ class IngestionPipeline:
         ] = False,
         hash_video_id: Annotated[str, "unique Hash Video Id"] = None,
         frame_stacking_grid_size: Annotated[int, "Grid size for frame stacking (>1 enables stacking, 1 disables)"] = 4,
-        motion_threshold: Annotated[float, "Motion threshold for keyframe extraction"] = 0.8,
+        keyframe_config: Annotated[Dict[str, float], "Keyframe extraction configuration"] = None,
     ):
         if disable_console_log == False:
             log_manager.enable_console()
@@ -191,7 +191,14 @@ class IngestionPipeline:
         self.index_name = index_name
         self.language = language
         self.frame_stacking_grid_size = frame_stacking_grid_size
-        self.motion_threshold = motion_threshold
+        # Set default keyframe config if not provided
+        if keyframe_config is None:
+            self.keyframe_config = {
+                "motion_threshold": 1.5,
+                "sample_fps": 2
+            }
+        else:
+            self.keyframe_config = keyframe_config
         self.blob_manager = None  # Will be initialized async when first needed
         self.original_video_path = video_path
 
@@ -258,8 +265,8 @@ class IngestionPipeline:
 
             # Configure keyframe extraction
             keyframe_config = KeyframeExtractionConfig(
-                motion_threshold=self.motion_threshold,
-                sample_fps=1
+                motion_threshold=self.keyframe_config["motion_threshold"],
+                sample_fps=self.keyframe_config["sample_fps"]
             )
 
             # Initialize keyframe extractor
@@ -447,8 +454,8 @@ class IngestionPipeline:
 
                 # Configure keyframe extraction
                 keyframe_config = KeyframeExtractionConfig(
-                    motion_threshold=self.motion_threshold,
-                    sample_fps=1
+                    motion_threshold=self.keyframe_config["motion_threshold"],
+                    sample_fps=self.keyframe_config["sample_fps"]
                 )
 
                 # Initialize keyframe extractor
@@ -1258,13 +1265,17 @@ if __name__ == "__main__":
     url = "video-url"
     source_language = Languages.ENGLISH_UNITED_STATES
     transcript_path = "transcript.srt"  # Optional: path to existing transcript file
+    keyframe_config = {
+        "motion_threshold": 1.5,
+        "sample_fps": 2
+    }
     ingestion = IngestionPipeline(
         video_path=video_path,
         index_name=index,
         url=url,
         transcription_service=TranscriptionServices.AZURE_STT,
         language=source_language,
-        transcript_path=transcript_path
-
+        transcript_path=transcript_path,
+        keyframe_config=keyframe_config
     )
     asyncio.run(ingestion())

@@ -28,8 +28,8 @@ async def get_relevant_frames(
     """
     try:
         # temporary setup for part B of the video, take only the first 64 characters of video_id
-        if len(video_id)>64:
-            video_id = video_id[:64]
+        # if len(video_id)>64:
+        #     video_id = video_id[:64]
         
         # Get search endpoint from environment
         search_endpoint = os.getenv('SEARCH_ENDPOINT')
@@ -53,14 +53,14 @@ async def get_relevant_frames(
         
         
         # Extract keyframe filenames from results
-        keyframe_filenames = []
+        keyframe_ids = []
         for result in results:
             keyframe_filename = result.get('keyframe_filename', '')
             if keyframe_filename:
-                keyframe_filenames.append(keyframe_filename)
+                keyframe_ids.append(keyframe_filename.split("_")[-1])  # Extract only the filename part
         
         
-        return keyframe_filenames
+        return keyframe_ids
         
     except Exception as e:
         return []

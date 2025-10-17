@@ -37,18 +37,18 @@ async def download_and_encode_blob(blob_name: str, container_name: str) -> Optio
     """Download JPG blob directly to memory and encode to base64."""
     try:
         credential = _get_credential()
-        blob_service_client = AsyncBlobServiceClient(
+        async with AsyncBlobServiceClient(
             os.getenv("BLOB_ACCOUNT_URL"), credential
-        )
-        container_client = blob_service_client.get_container_client(container_name)
-        blob_client = container_client.get_blob_client(blob_name)
+        ) as blob_service_client:
+            container_client = blob_service_client.get_container_client(container_name)
+            blob_client = container_client.get_blob_client(blob_name)
 
-        # Download blob data directly to memory
-        stream = await blob_client.download_blob()
-        image_data = await stream.readall()
+            # Download blob data directly to memory
+            stream = await blob_client.download_blob()
+            image_data = await stream.readall()
 
-        # Direct base64 encoding (no processing needed for JPG)
-        return base64.b64encode(image_data).decode('utf-8')
+            # Direct base64 encoding (no processing needed for JPG)
+            return base64.b64encode(image_data).decode('utf-8')
 
     except Exception as e:
         print(f"Failed to download and encode blob {blob_name}: {e}")
@@ -66,8 +66,8 @@ async def query_frame(
     """
 
     # Handle video_id validation and truncation for compatibility
-    if video_id and len(video_id) > 64:
-        video_id = video_id[:64]
+    # if video_id and len(video_id) > 64:
+    #     video_id = video_id[:64]
 
     # Get search endpoint from environment
     search_endpoint = os.getenv('SEARCH_ENDPOINT')
@@ -103,7 +103,7 @@ async def query_frame(
             # Search for relevant frames
             results = await searcher.search_keyframes(
                 query=query,
-                top_k=10,
+                top_k=50,
                 video_filter=combined_filter
             )
 
@@ -113,7 +113,7 @@ async def query_frame(
                     frame_filenames.append(keyframe_filename)
     else:
         # Use provided frame_ids
-        frame_filenames = frame_ids if frame_ids else []
+        frame_filenames = [f"{video_id}_{frame_id}" for frame_id in frame_ids if frame_id is not None]
 
     # Make frame_filenames unique
     frame_filenames = list(dict.fromkeys(frame_filenames))
@@ -150,6 +150,7 @@ async def query_frame(
             }
         })
 
+
     content.append({
         "type": "text",
         "text": f"Query: {query}"
@@ -162,15 +163,17 @@ async def query_frame(
                 "content": [
                     {
                         "type": "text",
-                        "text": """You are an expert visual analysis assistant specialized in extracting detailed information from video frames. Your task is to analyze the provided images and answer queries based solely on the visual content observed.
+                        "text": """You are an expert visual analysis assistant specialized in extracting detailed information from video frames. Your task is to analyze the provided frames of a video and answer queries based solely on the visual content observed.
 
-                        Instructions:
-                        - Analyze all visual elements present in the images thoroughly
-                        - Provide comprehensive and accurate descriptions based only on what you can see
-                        - Extract relevant details that would be useful for downstream processing
-                        - Do not include any information from your training knowledge that is not visible in the images
-                        - Be specific and detailed in your observations
-                        - Each image represents a separate individual frame from the video""",
+                    Instructions:
+                    - Analyze all visual elements present in the images thoroughly.
+                    - The images are ordered sequentially — consider the visual continuity between nearby frames to build a more complete understanding of the scene.
+                    - Use adjacent frames to fill in context or confirm uncertain visual details when possible.
+                    - Provide comprehensive and accurate descriptions based only on what you can see.
+                    - Extract relevant details that would be useful for downstream processing.
+                    - Do not include any information from your training knowledge that is not visible in the images.
+                    - Be specific and detailed in your observations.
+                    - Treat each image as part of a visual sequence rather than isolated frames.""",
                     }
                 ]
             },
@@ -180,13 +183,13 @@ async def query_frame(
             }
         ],
         "temperature": 0,
-        "top_p": 0.1
+        "top_p": 0.1,
     }
 
     response = await llm_provider.chat_completion(
         messages=payload['messages'],
         temperature=payload["temperature"],
-        top_p=payload['top_p'],
+        #top_p=payload['top_p'],
         max_tokens=500
     )
 
