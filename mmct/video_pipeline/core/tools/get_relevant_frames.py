@@ -45,7 +45,8 @@ async def get_relevant_frames(
         results = await searcher.search_keyframes(
             query=query,
             top_k=top_k,
-            video_filter=video_filter
+            video_filter=video_filter,
+            min_similarity_score=0.001
         )
         
         if not results:
