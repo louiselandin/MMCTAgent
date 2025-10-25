@@ -18,6 +18,8 @@ SHORT_VIDEO_TIME_LIMIT = 50  # seconds for videos <= 20 minutes
 LONG_VIDEO_TIME_LIMIT = 120  # seconds for videos > 20 minutes
 VIDEO_DURATION_THRESHOLD = 20  # minutes
 
+EMBEDDING_DEPLOYMENT_NAME = os.getenv("EMBEDDING_SERVICE_DEPLOYMENT_NAME", "text-embedding-ada-002")
+
 async def calculate_transcript_duration(srt_text: str) -> float:
     """
     Calculate the total duration of the transcript in minutes.
@@ -109,19 +111,43 @@ async def process_transcript(srt_text: str, SIMILARITY_THRESHOLD=None, TIME_LIMI
     async def create_embedding(text):
         """Generates an embedding for a given text using OpenAI API asynchronously."""
         try:
-            response = await gpt40_client.embeddings.create(input=text, model="text-embedding-ada-002")
+            response = await gpt40_client.embeddings.create(input=text, model=EMBEDDING_DEPLOYMENT_NAME)
             return response.data[0].embedding
         except Exception as e:
             raise Exception(f"Error generating embedding: {e}")
 
+    async def create_batch_embeddings(texts, batch_size=100):
+        """Generates embeddings for multiple texts in batches using Azure Embeddings API."""
+        all_embeddings = []
+        total_batches = math.ceil(len(texts) / batch_size)
+        
+        logger.info(f"🔄 Creating batch embeddings for {len(texts)} texts in {total_batches} batches")
+        
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i + batch_size]
+            batch_num = (i // batch_size) + 1
+            logger.info(f"⏳ Processing batch {batch_num}/{total_batches} ({len(batch_texts)} texts)")
+            response = await gpt40_client.embeddings.create(input=batch_texts, model=EMBEDDING_DEPLOYMENT_NAME)
+            batch_embeddings = [item.embedding for item in response.data]
+            all_embeddings.extend(batch_embeddings)
+        logger.info(f"✅ Batch embedding complete: {len(all_embeddings)} embeddings created")
+        return all_embeddings
+
     async def calculate_cosine_similarity(vec1, vec2):
         """Computes cosine similarity between two vectors asynchronously."""
         return cosine_similarity(np.array(vec1).reshape(1, -1), np.array(vec2).reshape(1, -1))[0][0]
+    
+    async def calculate_chunk_centroid(embeddings):
+        """Calculate the centroid (mean) of a list of embeddings."""
+        if not embeddings:
+            return None
+        embeddings_array = np.array(embeddings)
+        return np.mean(embeddings_array, axis=0)
 
     async def semantic_chunking(sentences, time_stamps, end_times):
         """
-        Groups transcript text into semantic chunks based on chunk-to-sentence similarity.
-        Compares accumulated chunk content against new sentences for better semantic coherence.
+        Groups transcript text into semantic chunks using batch embeddings and greedy centroid-based approach.
+        Compares new sentences against chunk centroid for better semantic coherence.
         """
         if not sentences:
             logger.warning("No sentences provided for semantic chunking")
@@ -130,111 +156,104 @@ async def process_transcript(srt_text: str, SIMILARITY_THRESHOLD=None, TIME_LIMI
         logger.info(f"🔄 Starting semantic chunking with {len(sentences)} sentences")
         logger.info(f"📊 Configuration: SIMILARITY_THRESHOLD={SIMILARITY_THRESHOLD}, TIME_LIMIT={TIME_LIMIT}s")
 
-        chunks = {}
-        current_chunk = ""
-        chunk_start_time = time_stamps[0]
-        chunk_end_time = end_times[0]
-        embeddings_cache = {}
+        # Step 1: Batch embed all sentences
+        logger.info("🧠 Creating batch embeddings for all sentences...")
+        sentence_embeddings = await create_batch_embeddings(sentences)
         
-        # Progress tracking
+        # Filter out None embeddings and corresponding data
+        valid_data = []
+        for i, embedding in enumerate(sentence_embeddings):
+            if embedding is not None:
+                valid_data.append((sentences[i], time_stamps[i], end_times[i], embedding))
+            else:
+                logger.warning(f"Skipping sentence {i} due to failed embedding")
+        
+        if not valid_data:
+            logger.error("No valid embeddings created")
+            return ""
+        
+        logger.info(f"✅ Created {len(valid_data)} valid embeddings")
+        
+        # Step 2: Greedy chunking with centroid comparison
+        chunks = {}
         chunks_created = 0
-        embeddings_generated = 0
-        cache_hits = 0
         similarity_splits = 0
         time_splits = 0
-
-        for i, sentence in enumerate(sentences):
-            # Progress logging every 50 sentences
-            if i > 0 and i % 50 == 0:
-                progress_pct = (i / len(sentences)) * 100
-                logger.info(f"⏳ Processing progress: {i}/{len(sentences)} sentences ({progress_pct:.1f}%) | Chunks created: {chunks_created}")
-
-            # Get embedding for current sentence
-            if sentence in embeddings_cache:
-                sentence_embedding = embeddings_cache[sentence]
-                cache_hits += 1
-            else:
-                sentence_embedding = await create_embedding(sentence)
-                if sentence_embedding is None:
-                    logger.warning(f"Failed to create embedding for sentence {i}, skipping")
-                    continue  # Skip if embedding fails
-                embeddings_cache[sentence] = sentence_embedding
-                embeddings_generated += 1
-
-            if i == 0:
-                # Initialize with first sentence
-                current_chunk = sentence + " "
-                chunk_start_time = time_stamps[i]
-                chunk_end_time = end_times[i]
-                logger.info(f"🎯 Initialized first chunk at {await format_timestamp(chunk_start_time)}")
-                continue
-
-            # Get embedding for current chunk content
-            # Use chunk position + content hash for unique cache key to avoid collisions
-            chunk_text = current_chunk.strip()
-            chunk_embedding_key = f"chunk_{chunks_created}_{hash(chunk_text)}"
+        
+        # Initialize first chunk
+        current_chunk_sentences = [valid_data[0][0]]
+        current_chunk_embeddings = [valid_data[0][3]]
+        chunk_start_time = valid_data[0][1]
+        chunk_end_time = valid_data[0][2]
+        
+        logger.info(f"🎯 Initialized first chunk at {await format_timestamp(chunk_start_time)}")
+        
+        for i in range(1, len(valid_data)):
+            sentence, start_time, end_time, sentence_embedding = valid_data[i]
             
-            if chunk_embedding_key in embeddings_cache:
-                chunk_embedding = embeddings_cache[chunk_embedding_key]
-                cache_hits += 1
-            else:
-                chunk_embedding = await create_embedding(chunk_text)
-                if chunk_embedding is None:
-                    logger.warning(f"Failed to create chunk embedding at sentence {i}, adding sentence to chunk anyway")
-                    # Don't skip - add sentence to chunk even if embedding fails
-                    current_chunk += sentence + " "
-                    chunk_end_time = end_times[i]
-                    continue
-                embeddings_cache[chunk_embedding_key] = chunk_embedding
-                embeddings_generated += 1
-
-            # Calculate similarity between current chunk and new sentence
-            similarity = await calculate_cosine_similarity(chunk_embedding, sentence_embedding)
+            # Progress logging every 50 sentences
+            if i % 50 == 0:
+                progress_pct = (i / len(valid_data)) * 100
+                logger.info(f"⏳ Processing progress: {i}/{len(valid_data)} sentences ({progress_pct:.1f}%) | Chunks created: {chunks_created}")
+            
+            # Calculate current chunk centroid
+            chunk_centroid = await calculate_chunk_centroid(current_chunk_embeddings)
+            if chunk_centroid is None:
+                logger.warning(f"Failed to calculate centroid at sentence {i}, adding to chunk anyway")
+                current_chunk_sentences.append(sentence)
+                current_chunk_embeddings.append(sentence_embedding)
+                chunk_end_time = end_time
+                continue
+            
+            # Calculate similarity between sentence and chunk centroid
+            similarity = await calculate_cosine_similarity(chunk_centroid, sentence_embedding)
             
             # Check if we should start a new chunk
-            time_exceeded = (end_times[i] - chunk_start_time) > TIME_LIMIT
+            time_exceeded = (end_time - chunk_start_time) > TIME_LIMIT
             similarity_too_low = similarity < SIMILARITY_THRESHOLD
             
             if similarity_too_low or time_exceeded:
                 # Finalize current chunk
-                if current_chunk.strip():
-                    chunk_duration = chunk_end_time - chunk_start_time
-                    chunks[f"{await format_timestamp(chunk_start_time)} --> {await format_timestamp(chunk_end_time)}"] = current_chunk.strip()
-                    chunks_created += 1
-                    
-                    # High-level chunk creation logging
-                    reason = "LOW_SIMILARITY" if similarity_too_low else "TIME_LIMIT"
-                    word_count = len(current_chunk.strip().split())
-                    logger.info(f"📦 Chunk #{chunks_created} created: {chunk_duration:.1f}s duration, {word_count} words | Reason: {reason} (sim={similarity:.3f})")
-                    
-                    # Track split reasons
-                    if similarity_too_low:
-                        similarity_splits += 1
-                    if time_exceeded:
-                        time_splits += 1
+                chunk_text = " ".join(current_chunk_sentences)
+                chunk_duration = chunk_end_time - chunk_start_time
+                chunks[f"{await format_timestamp(chunk_start_time)} --> {await format_timestamp(chunk_end_time)}"] = chunk_text
+                chunks_created += 1
                 
-                # Start new chunk
-                current_chunk = sentence + " "
-                chunk_start_time = time_stamps[i]
-                chunk_end_time = end_times[i]
+                # Logging
+                reason = "LOW_SIMILARITY" if similarity_too_low else "TIME_LIMIT"
+                word_count = len(chunk_text.split())
+                logger.info(f"📦 Chunk #{chunks_created} created: {chunk_duration:.1f}s duration, {word_count} words | Reason: {reason} (sim={similarity:.3f})")
+                
+                # Track split reasons
+                if similarity_too_low:
+                    similarity_splits += 1
+                if time_exceeded:
+                    time_splits += 1
+                
+                # Start new chunk with current sentence
+                current_chunk_sentences = [sentence]
+                current_chunk_embeddings = [sentence_embedding]
+                chunk_start_time = start_time
+                chunk_end_time = end_time
             else:
                 # Add sentence to current chunk
-                current_chunk += sentence + " "
-                chunk_end_time = end_times[i]
+                current_chunk_sentences.append(sentence)
+                current_chunk_embeddings.append(sentence_embedding)
+                chunk_end_time = end_time
 
         # Add the last chunk if it exists
-        if current_chunk.strip():
+        if current_chunk_sentences:
+            chunk_text = " ".join(current_chunk_sentences)
             chunk_duration = chunk_end_time - chunk_start_time
-            chunks[f"{await format_timestamp(chunk_start_time)} --> {await format_timestamp(chunk_end_time)}"] = current_chunk.strip()
+            chunks[f"{await format_timestamp(chunk_start_time)} --> {await format_timestamp(chunk_end_time)}"] = chunk_text
             chunks_created += 1
-            word_count = len(current_chunk.strip().split())
+            word_count = len(chunk_text.split())
             logger.info(f"📦 Final Chunk #{chunks_created} created: {chunk_duration:.1f}s duration, {word_count} words | Reason: END_OF_TRANSCRIPT")
 
         # Final summary logging
-        reduction_pct = ((len(sentences) - len(chunks)) / len(sentences)) * 100 if len(sentences) > 0 else 0
+        reduction_pct = ((len(valid_data) - len(chunks)) / len(valid_data)) * 100 if len(valid_data) > 0 else 0
         logger.info(f"✅ Semantic chunking complete!")
-        logger.info(f"📈 Results: {len(sentences)} sentences → {len(chunks)} chunks ({reduction_pct:.1f}% reduction)")
-        logger.info(f"🧠 Embeddings: {embeddings_generated} generated, {cache_hits} cache hits")
+        logger.info(f"📈 Results: {len(valid_data)} sentences → {len(chunks)} chunks ({reduction_pct:.1f}% reduction)")
         logger.info(f"🔀 Split reasons: {similarity_splits} similarity, {time_splits} time limit")
         
         return "\n\n".join(f"{idx+1}\n{time_range}\n{chunk}" for idx, (time_range, chunk) in enumerate(chunks.items()))
