@@ -78,7 +78,7 @@ async def query_frame(
     # Handle video_id validation and truncation for compatibility
     # if video_id and len(video_id) > 64:
     #     video_id = video_id[:64]
-    save_frames_locally  = True
+    save_frames_locally  = False
     # Get search endpoint from environment
     search_endpoint = os.getenv('SEARCH_ENDPOINT')
 
