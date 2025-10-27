@@ -33,7 +33,7 @@ class AzureCredentials:
         )
 
     @staticmethod
-    def get_credentials_async():
+    def get_async_credentials():
         """
         Get credentials for Azure services (async version).
         Uses ChainedTokenCredential to try CLI first, then fallback to DefaultAzureCredential.

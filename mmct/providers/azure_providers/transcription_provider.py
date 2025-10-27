@@ -10,7 +10,7 @@ class AzureTranscriptionProvider(TranscriptionProvider):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.credential = AzureCredentials.get_credentials_async()
+        self.credential = AzureCredentials.get_async_credentials()
         self.speech_config = self._initialize_speech_config()
     
     def _initialize_speech_config(self):

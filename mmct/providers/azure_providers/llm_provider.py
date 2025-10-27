@@ -13,7 +13,7 @@ class AzureLLMProvider(LLMProvider):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.credential = AzureCredentials.get_credentials_async()
+        self.credential = AzureCredentials.get_async_credentials()
         self.client = self._initialize_client()
     
     def _initialize_client(self):

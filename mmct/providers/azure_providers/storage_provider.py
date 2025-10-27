@@ -28,14 +28,14 @@ class AzureStorageProvider(StorageProvider):
         self.credential = None
         self.service_client = None
 
-    async def _initialize(self):
+    def _initialize(self):
         """Initialize credential and service client asynchronously."""
         if self.service_client is None:
             try:
                 use_managed_identity = self.config.get("use_managed_identity") or os.getenv("STORAGE_USE_MANAGED_IDENTITY", "true").lower() == "true"
 
                 if use_managed_identity:
-                    self.credential = AzureCredentials.get_credentials_async()
+                    self.credential = AzureCredentials.get_async_credentials()
                 else:
                     # For non-managed identity, you'd use connection string or SAS token
                     raise ConfigurationException("Non-managed identity auth not yet implemented for blob storage")
@@ -53,10 +53,10 @@ class AzureStorageProvider(StorageProvider):
                 logger.exception(f"Failed to initialize Azure Blob Storage client: {e}")
                 raise ProviderException(f"Failed to initialize Azure Blob Storage client: {e}")
 
-    async def _ensure_initialized(self):
+    def _ensure_initialized(self):
         """Ensure the client is initialized before operations."""
         if self.service_client is None:
-            await self._initialize()
+            self._initialize()
 
     async def get_blob_url(self, container: str, blob_name: str) -> str:
         """
