@@ -202,7 +202,8 @@ class VideoFrameSearchClient:
                     vector_queries=[vector_query],
                     filter=filters,
                     top=top_k,
-                    include_total_count=True
+                    include_total_count=True,
+                    select = ['keyframe_filename']
                 )
 
                 # Convert results to list

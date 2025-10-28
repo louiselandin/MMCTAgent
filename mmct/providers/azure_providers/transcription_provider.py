@@ -40,9 +40,3 @@ class AzureTranscriptionProvider(TranscriptionProvider):
                 )
         except Exception as e:
             raise ProviderException(f"Failed to initialize Azure Speech config: {e}")
-
-    async def close(self):
-        """Close the transcription provider and cleanup resources."""
-        if self.credential:
-            logger.info("Closing Azure Speech Service credentials")
-            await self.credential.close()

@@ -119,5 +119,5 @@ class AzureLLMProvider(LLMProvider):
         if self.client:
             logger.info("Closing Azure OpenAI LLM client")
             await self.client.close()
-            if self.credential:
-                await self.credential.close()
+            # if self.credential:
+            #     await self.credential.close()

@@ -87,7 +87,6 @@ class KeyframeSearcher:
 
             # Filter by similarity score to remove noisy/irrelevant frames
             if min_similarity_score is not None and results:
-                print(results)
                 filtered_results = [
                     r for r in results
                     if r.get('@search.score', 0) >= min_similarity_score

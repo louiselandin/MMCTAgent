@@ -138,5 +138,5 @@ class AzureSearchProvider(SearchProvider):
         if self.client:
             logger.info("Closing Azure AI Search client")
             await self.client.close()
-            if self.credential:
-                await self.credential.close()
+            # if self.credential:
+            #     await self.credential.close()

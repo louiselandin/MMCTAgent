@@ -46,7 +46,7 @@ async def get_relevant_frames(
             query=query,
             top_k=top_k,
             video_filter=video_filter,
-            min_similarity_score=0.001
+            min_similarity_score=0.0001
         )
         
         if not results:

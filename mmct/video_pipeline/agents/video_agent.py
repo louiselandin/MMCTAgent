@@ -2,6 +2,7 @@
 import asyncio
 from typing import Optional
 from dotenv import load_dotenv
+from loguru import logger
 
 # Local Imports
 from mmct.video_pipeline.core.tools.video_qna import video_qna
@@ -130,6 +131,9 @@ class VideoAgent:
 
         except Exception as e:
             return self._create_error_response(f"VideoAgent execution failed: {str(e)}")
+        finally:
+            # Clean up resources
+            await self.cleanup()
 
     async def _generate_final_answer(self, video_qna_response: dict) -> VideoAgentResponse:
         """
@@ -175,6 +179,14 @@ class VideoAgent:
             source=[],
             tokens={"input_token": 0, "output_token": 0}
         )
+
+    async def cleanup(self):
+        """Clean up resources and close connections."""
+        try:
+            if self.llm_provider and hasattr(self.llm_provider, 'close'):
+                await self.llm_provider.close()
+        except Exception as e:
+            logger.error(f"Error during VideoAgent cleanup: {e}")
 
 
 if __name__ == "__main__":

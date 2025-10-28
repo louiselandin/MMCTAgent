@@ -105,5 +105,5 @@ class AzureEmbeddingProvider(EmbeddingProvider):
         if self.client:
             logger.info("Closing Azure OpenAI embedding client")
             await self.client.close()
-            if self.credential:
-                await self.credential.close()
+            # if self.credential:
+            #     await self.credential.close()

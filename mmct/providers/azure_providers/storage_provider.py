@@ -224,5 +224,5 @@ class AzureStorageProvider(StorageProvider):
         if self.service_client:
             logger.info("Closing Azure Blob Storage client")
             await self.service_client.close()
-            if self.credential:
-                await self.credential.close()
+            # if self.credential:
+            #     await self.credential.close()
