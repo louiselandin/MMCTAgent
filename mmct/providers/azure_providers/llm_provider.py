@@ -13,7 +13,7 @@ class AzureLLMProvider(LLMProvider):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.credential = AzureCredentials.get_async_credentials()
+        self.credential = AzureCredentials.get_credentials()
         self.client = self._initialize_client()
     
     def _initialize_client(self):
@@ -114,3 +114,10 @@ class AzureLLMProvider(LLMProvider):
             logger.error(f"Azure OpenAI chat completion failed: {e}")
             raise ProviderException(f"Azure OpenAI chat completion failed: {e}")
 
+    async def close(self):
+        """Close the LLM client and cleanup resources."""
+        if self.client:
+            logger.info("Closing Azure OpenAI LLM client")
+            await self.client.close()
+            if self.credential:
+                await self.credential.close()

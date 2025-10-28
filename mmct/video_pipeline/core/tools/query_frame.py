@@ -9,56 +9,39 @@ import base64
 from datetime import time
 from typing import Annotated, Optional
 
-from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
-from azure.identity import DefaultAzureCredential, AzureCliCredential
 from mmct.providers.factory import provider_factory
 from mmct.config.settings import MMCTConfig
 from mmct.video_pipeline.core.tools.utils.search_keyframes import KeyframeSearcher
 
 # Initialize configuration and providers
-config = MMCTConfig(model_name=os.getenv("LLM_VISION_DEPLOYMENT_NAME", "gpt-5-chat"))
+config = MMCTConfig(model_name=os.getenv("LLM_VISION_DEPLOYMENT_NAME", "gpt-4o"))
 llm_provider = provider_factory.create_llm_provider(
     config.llm.provider,
     config.llm.model_dump()
 )
 
-def _get_credential():
-    """Get Azure credential, trying CLI first, then DefaultAzureCredential."""
-    try:
-        # Try Azure CLI credential first
-        cli_credential = AzureCliCredential()
-        # Test if CLI credential works by getting a token
-        cli_credential.get_token("https://storage.azure.com/.default")
-        return cli_credential
-    except Exception:
-        return DefaultAzureCredential()
+storage_provider = provider_factory.create_storage_provider(
+                config.storage.provider, config.storage.model_dump()
+            )
 
 async def download_and_encode_blob(blob_name: str, container_name: str, save_locally: bool = False, local_dir: str = "./debug_frames") -> Optional[str]:
-    """Download JPG blob directly to memory and encode to base64."""
+    """Download JPG blob using storage_provider and encode to base64."""
     try:
-        credential = _get_credential()
-        async with AsyncBlobServiceClient(
-            os.getenv("BLOB_ACCOUNT_URL"), credential
-        ) as blob_service_client:
-            container_client = blob_service_client.get_container_client(container_name)
-            blob_client = container_client.get_blob_client(blob_name)
+        # Load blob data using storage provider
+        image_data = await storage_provider.load_blob_to_memory(container_name, blob_name)
 
-            # Download blob data directly to memory
-            stream = await blob_client.download_blob()
-            image_data = await stream.readall()
+        # Optionally save to local disk for debugging
+        if save_locally:
+            os.makedirs(local_dir, exist_ok=True)
+            # Create safe filename from blob_name
+            safe_filename = blob_name.replace('/', '_')
+            local_path = os.path.join(local_dir, safe_filename)
+            with open(local_path, 'wb') as f:
+                f.write(image_data)
+            print(f"Saved frame to: {local_path}")
 
-            # Optionally save to local disk for debugging
-            if save_locally:
-                os.makedirs(local_dir, exist_ok=True)
-                # Create safe filename from blob_name
-                safe_filename = blob_name.replace('/', '_')
-                local_path = os.path.join(local_dir, safe_filename)
-                with open(local_path, 'wb') as f:
-                    f.write(image_data)
-                print(f"Saved frame to: {local_path}")
-
-            # Direct base64 encoding (no processing needed for JPG)
-            return base64.b64encode(image_data).decode('utf-8')
+        # Direct base64 encoding (no processing needed for JPG)
+        return base64.b64encode(image_data).decode('utf-8')
 
     except Exception as e:
         print(f"Failed to download and encode blob {blob_name}: {e}")

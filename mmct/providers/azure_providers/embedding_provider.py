@@ -14,7 +14,7 @@ class AzureEmbeddingProvider(EmbeddingProvider):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.credential = AzureCredentials.get_async_credentials()
+        self.credential = AzureCredentials.get_credentials()
         self.client = self._initialize_client()
     
     def _initialize_client(self):
@@ -30,10 +30,8 @@ class AzureEmbeddingProvider(EmbeddingProvider):
                 raise ConfigurationException("Azure OpenAI endpoint is required")
             
             if use_managed_identity:
-                token_provider = get_bearer_token_provider(
-                    self.credential, 
-                    "https://cognitiveservices.azure.com/.default"
-                )
+                scope = self.config.get("token_scope", "https://cognitiveservices.azure.com/.default")
+                token_provider = get_bearer_token_provider(self.credential, scope)
                 return AsyncAzureOpenAI(
                     api_version=api_version,
                     azure_endpoint=endpoint,
@@ -101,3 +99,11 @@ class AzureEmbeddingProvider(EmbeddingProvider):
         except Exception as e:
             logger.error(f"Azure OpenAI batch embedding failed: {e}")
             raise ProviderException(f"Azure OpenAI batch embedding failed: {e}")
+
+    async def close(self):
+        """Close the embedding client and cleanup resources."""
+        if self.client:
+            logger.info("Closing Azure OpenAI embedding client")
+            await self.client.close()
+            if self.credential:
+                await self.credential.close()

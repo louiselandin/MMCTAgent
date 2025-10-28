@@ -624,7 +624,7 @@ class IngestionPipeline:
             )
 
             # Get blob manager
-            blob_manager = await BlobStorageManager.create()
+            blob_manager = await self._get_blob_manager()
 
             # Set keyframes blob URL
             context.keyframes_blob_folder_url = await blob_manager.get_blob_url(
@@ -1068,7 +1068,7 @@ class IngestionPipeline:
                 self.logger.info("Frame embeddings stored to search index!")
 
                 # Get blob manager
-                blob_manager = await BlobStorageManager.create()
+                blob_manager = await self._get_blob_manager()
 
                 # Upload keyframes to blob storage
                 await self._add_keyframes_to_upload_tasks(context, blob_manager)
@@ -1259,7 +1259,7 @@ class IngestionPipeline:
         """
         try:
             # Get blob manager
-            blob_manager = await BlobStorageManager.create()
+            blob_manager = await self._get_blob_manager()
 
             # Set keyframes blob URL
             context.keyframes_blob_folder_url = await blob_manager.get_blob_url(

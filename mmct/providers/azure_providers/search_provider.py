@@ -126,10 +126,17 @@ class AzureSearchProvider(SearchProvider):
                 client = AzureSearchProvider(config).client
             else:
                 client = self.client
-            
+
             result = await client.delete_documents(documents=[{"id": doc_id}])
             return result[0].succeeded
         except Exception as e:
             logger.error(f"Azure AI Search deletion failed: {e}")
             raise ProviderException(f"Azure AI Search deletion failed: {e}")
 
+    async def close(self):
+        """Close the search client and cleanup resources."""
+        if self.client:
+            logger.info("Closing Azure AI Search client")
+            await self.client.close()
+            if self.credential:
+                await self.credential.close()
