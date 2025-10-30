@@ -147,9 +147,7 @@ class CustomImageEmbeddingProvider(ImageEmbeddingProvider):
                 raise ProviderException("Failed to load or preprocess image")
 
             # Run embedding generation in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            embeddings = await loop.run_in_executor(
-                None,
+            embeddings = await asyncio.to_thread(
                 self._generate_embeddings_sync,
                 [img]
             )
@@ -187,9 +185,7 @@ class CustomImageEmbeddingProvider(ImageEmbeddingProvider):
                 raise ProviderException("No valid images to process in batch")
 
             # Run embedding generation in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            embeddings = await loop.run_in_executor(
-                None,
+            embeddings = await asyncio.to_thread(
                 self._generate_embeddings_sync,
                 processed_images
             )
@@ -247,9 +243,7 @@ class CustomImageEmbeddingProvider(ImageEmbeddingProvider):
         """
         try:
             # Run embedding generation in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            embeddings = await loop.run_in_executor(
-                None,
+            embeddings = await asyncio.to_thread(
                 self._generate_text_embeddings_sync,
                 [text]
             )
@@ -275,9 +269,7 @@ class CustomImageEmbeddingProvider(ImageEmbeddingProvider):
         """
         try:
             # Run embedding generation in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            embeddings = await loop.run_in_executor(
-                None,
+            embeddings = await asyncio.to_thread(
                 self._generate_text_embeddings_sync,
                 texts
             )
@@ -288,7 +280,7 @@ class CustomImageEmbeddingProvider(ImageEmbeddingProvider):
             logger.error(f"CLIP batch text embedding failed: {e}")
             raise ProviderException(f"CLIP batch text embedding failed: {e}")
 
-    async def close(self):
+    def close(self):
         """Close the provider and cleanup resources."""
         try:
             if self.model is not None:

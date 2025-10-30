@@ -35,6 +35,6 @@ class ImageEmbeddingProvider(ABC):
         pass
 
     @abstractmethod
-    async def close(self):
+    def close(self):
         """Close the provider and cleanup resources."""
         pass

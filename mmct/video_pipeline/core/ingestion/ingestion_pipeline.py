@@ -212,7 +212,6 @@ class IngestionPipeline:
         self.video_container = os.getenv("VIDEO_CONTAINER_NAME")
         self.audio_container = os.getenv("AUDIO_CONTAINER_NAME")
         self.transcript_container = os.getenv("TRANSCRIPT_CONTAINER_NAME")
-        self.frames_container = os.getenv("FRAMES_CONTAINER_NAME")
         self.keyframe_container = os.getenv(
             "KEYFRAME_CONTAINER_NAME", "keyframes"
         )  # Default to "keyframes" if not set
@@ -233,9 +232,7 @@ class IngestionPipeline:
     async def _get_blob_manager(self):
         """method to get blob manager instance."""
         if self.blob_manager is None:
-            self.blob_manager = provider_factory.create_storage_provider(
-                self.config.storage.provider, self.config.storage.model_dump()
-            )
+            self.blob_manager = provider_factory.create_storage_provider()
         return self.blob_manager
 
     async def _check_and_compress_video(self):
