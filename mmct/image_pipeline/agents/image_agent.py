@@ -127,7 +127,6 @@ class ImageAgent:
             # Initialize client components using providers
             self.model_client = self.llm_provider.get_autogen_client()
 
-            self.model_name = self.config.llm.model_name
             logger.info("Initialized ImageAgent with provider system")
             
             self.tools_list = []
@@ -349,7 +348,7 @@ class ImageAgent:
             # Use the provider system for LLM completion
             response = await self.llm_provider.chat_completion(
                 messages=messages,
-                temperature=self.config.llm.temperature,
+                temperature=0,
                 response_format=ImageAgentResponse
             )
 
