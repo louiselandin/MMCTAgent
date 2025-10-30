@@ -110,7 +110,7 @@ class CLIPEmbeddingsGenerator:
         """Clean up model resources."""
         try:
             if self.provider is not None:
-                await self.provider.close()
+                self.provider.close()
 
             logger.info("Embeddings generator cleaned up successfully")
 
