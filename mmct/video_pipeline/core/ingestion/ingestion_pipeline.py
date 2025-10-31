@@ -32,14 +32,11 @@ from mmct.video_pipeline.core.ingestion.transcription.transcription_services imp
 )
 
 from mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_extractor import (
-    KeyframeExtractor,
     KeyframeExtractionConfig,
 )
-from mmct.video_pipeline.core.ingestion.key_frames_extractor.clip_embeddings import (
-    CLIPEmbeddingsGenerator,
-    FrameEmbedding,
+from mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor import (
+    KeyframeProcessor,
 )
-from mmct.config.settings import ImageEmbeddingConfig
 from mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_search_index import (
     KeyframeSearchIndex,
 )
@@ -47,11 +44,7 @@ from mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_search_ind
 from mmct.video_pipeline.core.ingestion.semantic_chunking.semantic import (
     SemanticChunking,
 )
-from mmct.video_pipeline.core.ingestion.merge_summary_n_transcript.merge_visual_summay_with_transcript import (
-    MergeVisualSummaryWithTranscript,
-)
 from mmct.video_pipeline.core.ingestion.video_compression.video_compression import VideoCompressor
-from mmct.blob_store_manager import BlobStorageManager
 from dotenv import load_dotenv, find_dotenv
 from mmct.utils.logging_config import log_manager
 from dataclasses import dataclass
@@ -79,8 +72,6 @@ class ProcessingContext:
     chapter_responses: Optional[Any] = None
     chapter_transcripts: Optional[Any] = None
     is_already_ingested: Optional[bool] = None
-    keyframe_metadata: Optional[List] = None
-    frame_embeddings: Optional[List[FrameEmbedding]] = None
     parent_id: Optional[str] = None  # Original video ID (for both split and non-split cases)
     parent_duration: Optional[float] = None  # Original video duration in seconds
     video_duration: Optional[float] = None  # Duration of this specific video part in seconds
@@ -92,21 +83,6 @@ class ProcessingContext:
             self.pending_upload_tasks = []
         if self.local_resources is None:
             self.local_resources = []
-
-    async def cleanup_pending_uploads(self):
-        """Clean up any pending upload tasks that were never awaited."""
-        if self.pending_upload_tasks:
-            try:
-                # Close/cancel any pending coroutines
-                for task in self.pending_upload_tasks:
-                    if asyncio.iscoroutine(task):
-                        task.close()
-                self.pending_upload_tasks.clear()
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to clean up pending upload tasks for video '{self.hash_id}' "
-                    f"({self.video_path}): {str(e)}"
-                ) from e
 
 
 class IngestionPipeline:
@@ -226,14 +202,14 @@ class IngestionPipeline:
         self.language = language
         self.frame_stacking_grid_size = frame_stacking_grid_size
         self.keyframe_config = keyframe_config
-        self.blob_manager = None
         self.original_video_path = video_path
 
     async def _get_blob_manager(self):
-        """method to get blob manager instance."""
-        if self.blob_manager is None:
-            self.blob_manager = provider_factory.create_storage_provider()
-        return self.blob_manager
+        """
+        Create and return a new blob manager instance for each caller.
+        Each video part gets its own blob manager to avoid race conditions.
+        """
+        return provider_factory.create_storage_provider()
 
     async def _check_and_compress_video(self, video_path: str) -> str:
         """
@@ -288,88 +264,6 @@ class IngestionPipeline:
         except Exception as e:
             self.logger.warning(f"Exception occurred during video compression check: {e}")
             return video_path
-
-    async def _generate_embeddings_for_keyframes(
-        self, context: ProcessingContext
-    ) -> ProcessingContext:
-        """
-        Generate CLIP embeddings for extracted keyframes.
-        """
-        try:
-            if not context.keyframe_metadata:
-                self.logger.warning("No keyframe metadata available for embedding generation")
-                return context
-
-            self.logger.info(
-                f"Starting embedding generation for {len(context.keyframe_metadata)} keyframes..."
-            )
-
-            # Configure embedding generation - use settings from config
-            embedding_config = ImageEmbeddingConfig()
-
-            # Initialize embeddings generator
-            embeddings_generator = CLIPEmbeddingsGenerator(embedding_config)
-
-            try:
-                # Generate embeddings
-                context.frame_embeddings = await embeddings_generator.process_frames(
-                    context.keyframe_metadata, context.hash_id
-                )
-
-                self.logger.info(
-                    f"Successfully generated {len(context.frame_embeddings)} frame embeddings"
-                )
-
-            finally:
-                # Clean up embeddings generator resources
-                await embeddings_generator.cleanup()
-
-            return context
-
-        except Exception as e:
-            self.logger.exception(f"Exception occurred during embedding generation: {e}")
-            raise
-
-    async def _store_frame_embeddings_to_search_index(
-        self, context: ProcessingContext
-    ) -> ProcessingContext:
-        """
-        Store frame embeddings to Azure AI Search index.
-        """
-        try:
-            if not context.frame_embeddings:
-                self.logger.warning("No frame embeddings available for storage")
-                return context
-
-            self.logger.info(
-                f"Storing {len(context.frame_embeddings)} frame embeddings to search index..."
-            )
-
-            # Check if keyframe search index is initialized
-            if not self.keyframe_search_index:
-                self.logger.error("Keyframe search index not initialized")
-                return context
-
-            # Upload frame embeddings to search index
-            success = await self.keyframe_search_index.upload_frame_embeddings(
-                frame_embeddings=context.frame_embeddings,
-                video_id=context.hash_id,
-                video_path=context.video_path,
-                parent_id=context.parent_id,
-                parent_duration=context.parent_duration,
-                video_duration=context.video_duration,
-            )
-
-            if success:
-                self.logger.info("Successfully stored frame embeddings to search index")
-            else:
-                self.logger.error("Failed to store frame embeddings to search index")
-
-            return context
-
-        except Exception as e:
-            self.logger.exception(f"Exception occurred during frame embeddings storage: {e}")
-            raise
 
     async def _perform_early_ingestion_check(self) -> bool:
         """
@@ -480,18 +374,6 @@ class IngestionPipeline:
             # Step 1: Compress video if needed
             video_path = await self._check_and_compress_video(video_path)
 
-            # Step 2: Extract keyframes from this video part
-            self.logger.info(f"Extracting keyframes for part {part_hash_id}...")
-            keyframe_config = KeyframeExtractionConfig(
-                motion_threshold=self.keyframe_config["motion_threshold"],
-                sample_fps=self.keyframe_config["sample_fps"],
-            )
-            keyframe_extractor = KeyframeExtractor(keyframe_config)
-            keyframe_metadata = await keyframe_extractor.extract_keyframes(
-                video_path=video_path, video_id=part_hash_id
-            )
-            self.logger.info(f"Successfully extracted {len(keyframe_metadata)} keyframes for part {part_hash_id}")
-
             # Create processing context for this video part
             _, video_extension = os.path.splitext(video_path)
             # Calculate duration of this video part
@@ -504,7 +386,6 @@ class IngestionPipeline:
                 parent_id=parent_id,
                 parent_duration=parent_duration,
                 video_duration=part_duration,
-                keyframe_metadata=keyframe_metadata,
             )
 
             # Get blob manager
@@ -515,15 +396,23 @@ class IngestionPipeline:
                 container=self.keyframe_container, blob_name=f"{context.hash_id}"
             )
 
-            # Generate embeddings for keyframes
-            context = await self._generate_embeddings_for_keyframes(context)
-            self.logger.info(
-                f"Generated embeddings for {len(context.frame_embeddings)} keyframes for part {part_hash_id}"
+            # Step 2: Process keyframes (extract, generate embeddings, store to search index)
+            keyframe_config = KeyframeExtractionConfig(
+                motion_threshold=self.keyframe_config["motion_threshold"],
+                sample_fps=self.keyframe_config["sample_fps"],
             )
-
-            # Store embeddings to AI Search index
-            context = await self._store_frame_embeddings_to_search_index(context)
-            self.logger.info(f"Stored frame embeddings to AI Search for part {part_hash_id}")
+            keyframe_processor = KeyframeProcessor(
+                keyframe_config=keyframe_config,
+                keyframe_search_index=self.keyframe_search_index,
+            )
+            await keyframe_processor.process_keyframes(
+                video_path=video_path,
+                video_hash_id=part_hash_id,
+                parent_id=parent_id,
+                parent_duration=parent_duration,
+                video_duration=part_duration,
+            )
+            self.logger.info(f"Keyframe processing completed for part {part_hash_id}")
 
             # Queue keyframes for upload to blob storage
             await self._queue_keyframe_uploads(context, blob_manager)
@@ -558,7 +447,7 @@ class IngestionPipeline:
             context.transcript_path = transcript_path
 
             # Run functional pipeline methods
-            context = await self._get_transcription(context, blob_manager)
+            context = await self._get_transcription(context)
             self.logger.info(f"Transcript generated for part {part_hash_id}")
 
             # Generate semantic chapters from transcript
@@ -615,7 +504,7 @@ class IngestionPipeline:
             raise
 
     async def _get_transcription(
-        self, context: ProcessingContext, blob_manager
+        self, context: ProcessingContext
     ) -> ProcessingContext:
         """Generate transcription for video - functional version."""
         try:
@@ -682,14 +571,6 @@ class IngestionPipeline:
                 self.logger.info("Initialized the transcriber instance")
                 context.transcript, local_paths = await transcriber()
                 self.logger.info("Successfully generated the transcript for the video.")
-
-            # Only upload audio if transcription was performed (not when transcript_path is provided)
-            if not transcript_path_to_use:
-                audio_extension = (
-                    ".wav"
-                    if self.transcription_service in [TranscriptionServices.AZURE_STT, None]
-                    else ".mp3"
-                )
 
             context.local_resources.extend(local_paths)
             del local_paths
@@ -759,7 +640,7 @@ class IngestionPipeline:
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            stdout, stderr = await process.communicate()
+            stdout, _ = await process.communicate()
             return stdout and stdout.strip() == b"audio"
         except Exception as e:
             self.logger.warning(f"Could not check for audio stream: {e}")
