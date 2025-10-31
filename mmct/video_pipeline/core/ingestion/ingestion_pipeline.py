@@ -558,7 +558,7 @@ class IngestionPipeline:
             context.transcript_path = transcript_path
 
             # Run functional pipeline methods
-            context = await self.get_transcription(context, blob_manager)
+            context = await self._get_transcription(context, blob_manager)
             self.logger.info(f"Transcript generated for part {part_hash_id}")
 
             # Generate semantic chapters from transcript
@@ -614,7 +614,7 @@ class IngestionPipeline:
             )
             raise
 
-    async def get_transcription(
+    async def _get_transcription(
         self, context: ProcessingContext, blob_manager
     ) -> ProcessingContext:
         """Generate transcription for video - functional version."""
