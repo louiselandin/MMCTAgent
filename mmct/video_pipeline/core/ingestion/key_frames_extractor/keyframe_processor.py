@@ -42,7 +42,6 @@ class KeyframeProcessor:
         """
         self.keyframe_config = keyframe_config
         self.keyframe_search_index = keyframe_search_index
-        self.embeddings_generator = None
 
     async def process_keyframes(
         self,
@@ -74,17 +73,16 @@ class KeyframeProcessor:
             # Step 2: Generate embeddings
             logger.info(f"Generating embeddings for {len(keyframe_metadata)} keyframes...")
             embedding_config = ImageEmbeddingConfig()
-            self.embeddings_generator = CLIPEmbeddingsGenerator(embedding_config)
+            embeddings_generator = CLIPEmbeddingsGenerator(embedding_config)
 
             try:
-                frame_embeddings = await self.embeddings_generator.process_frames(
+                frame_embeddings = await embeddings_generator.process_frames(
                     keyframe_metadata, video_hash_id
                 )
                 logger.info(f"Successfully generated {len(frame_embeddings)} frame embeddings")
             finally:
                 # Clean up embeddings generator resources
-                await self.embeddings_generator.cleanup()
-                self.embeddings_generator = None
+                await embeddings_generator.cleanup()
 
             # Step 3: Store embeddings to search index
             logger.info(f"Storing {len(frame_embeddings)} frame embeddings to search index...")
@@ -104,10 +102,4 @@ class KeyframeProcessor:
 
         except Exception as e:
             logger.exception(f"Exception occurred during keyframe processing: {e}")
-            # Clean up embeddings generator if it exists
-            if self.embeddings_generator:
-                try:
-                    await self.embeddings_generator.cleanup()
-                except:
-                    pass
             raise
