@@ -258,27 +258,10 @@ async def check_video_already_ingested(hash_id: str, index_name: str) -> bool:
         bool: True if video already exists, False otherwise
     """
     try:
-        # Get credentials based on environment configuration
-        if os.environ.get("MANAGED_IDENTITY", "FALSE").upper() == "TRUE":
-            from azure.identity import AzureCliCredential, DefaultAzureCredential
-            try:
-                cli_credential = AzureCliCredential()
-                cli_credential.get_token("https://search.azure.com/.default")
-                credential = cli_credential
-            except Exception:
-                credential = DefaultAzureCredential()
-        else:
-            from azure.core.credentials import AzureKeyCredential
-            key = os.getenv("SEARCH_SERVICE_KEY")
-            if key is None:
-                raise Exception("SEARCH_SERVICE_KEY is missing for Azure AI Search!")
-            credential = AzureKeyCredential(key)
-
-        # Create AI Search client
+        # Create AI Search client (handles credentials internally)
         index_client = AISearchClient(
             endpoint=os.getenv("SEARCH_ENDPOINT"),
             index_name=index_name,
-            credential=credential
         )
 
         # Check if document exists

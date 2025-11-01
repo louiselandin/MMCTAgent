@@ -2,17 +2,15 @@ import os
 import re
 import base64
 from datetime import time
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Tuple
 from mmct.config.settings import MMCTConfig
 from mmct.providers.factory import provider_factory
 from mmct.video_pipeline.core.ingestion.models import (
     ChapterCreationResponse,
     SubjectVarietyResponse,
 )
-from azure.identity import AzureCliCredential, DefaultAzureCredential
 from mmct.video_pipeline.utils.helper import get_media_folder
 from mmct.video_pipeline.utils.helper import create_stacked_frames_base64
-from azure.search.documents.aio import SearchClient
 from loguru import logger
 from dotenv import load_dotenv, find_dotenv
 
@@ -20,13 +18,14 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), override=True)
 
 
-class ChapterGeneration:
+class ChapterGenerator:
     def __init__(self, keyframe_index, frame_stacking_grid_size=4):
         self.config = MMCTConfig()
         self.llm_provider = provider_factory.create_llm_provider()
         self.frame_stacking_grid_size = frame_stacking_grid_size
         self.search_provider = provider_factory.create_search_provider()
         self.index_name = keyframe_index
+        self._chapter_creator = None
       
 
     async def _get_frames(self, transcript_seg:str, video_id: str) -> List[str]:
@@ -79,7 +78,43 @@ class ChapterGeneration:
 
         return base64_frames
         
-    async def subject_and_variety(self, transcript: str) -> str:
+    async def create_chapters_batch(
+        self,
+        chunked_segments: List,
+        video_id: str,
+        subject_variety: Dict[str, str],
+        categories: str = "",
+        max_concurrent_requests: int = 3
+    ) -> Tuple[List[ChapterCreationResponse], List[str]]:
+        """
+        Create chapters from chunked transcript segments in parallel.
+
+        Args:
+            chunked_segments: List of TranscriptSegment objects from semantic chunking
+            video_id: Unique video identifier
+            subject_variety: Dict with 'subject' and 'variety_of_subject' keys
+            categories: Category and subcategory information (optional)
+            max_concurrent_requests: Maximum number of concurrent API requests
+
+        Returns:
+            Tuple of (chapter_responses, chapter_transcripts)
+        """
+        from mmct.video_pipeline.core.ingestion.chapter_generator.chapter_creator import ChapterCreator
+
+        if self._chapter_creator is None:
+            self._chapter_creator = ChapterCreator(
+                chapter_generator=self,
+                max_concurrent_requests=max_concurrent_requests
+            )
+
+        return await self._chapter_creator.create_chapters_from_segments(
+            chunked_segments=chunked_segments,
+            video_id=video_id,
+            subject_variety=subject_variety,
+            categories=categories
+        )
+
+    async def _extract_subject_and_variety(self, transcript: str) -> str:
         """
         Extract subject and variety information from a video transcript using an AI model.
 
@@ -124,12 +159,12 @@ class ChapterGeneration:
             parsed_response: SubjectVarietyResponse = result['content']
             # Return the model as JSON string
             return parsed_response.model_dump_json()
-        except Exception as e:
+        except Exception:
             return SubjectVarietyResponse(
                 subject="None", variety_of_subject="None"
             ).model_dump_json()
 
-    async def Chapters_creation(
+    async def create_chapter(
         self,
         transcript: str,
         video_id: str,

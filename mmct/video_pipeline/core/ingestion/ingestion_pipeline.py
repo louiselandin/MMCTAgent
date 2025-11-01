@@ -41,8 +41,8 @@ from mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_search_ind
     KeyframeSearchIndex,
 )
 
-from mmct.video_pipeline.core.ingestion.semantic_chunking.semantic import (
-    SemanticChunking,
+from mmct.video_pipeline.core.ingestion.chapter_generator.chapter_ingestion_pipeline import (
+    ChapterIngestionPipeline,
 )
 from mmct.video_pipeline.core.ingestion.video_compression.video_compression import VideoCompressor
 from dotenv import load_dotenv, find_dotenv
@@ -584,14 +584,14 @@ class IngestionPipeline:
         self, context: ProcessingContext, url: Optional[str] = None
     ) -> ProcessingContext:
         """
-        Generate semantic chapters from transcript using semantic chunking.
+        Generate semantic chapters from transcript using the chapter ingestion pipeline.
         Creates chapters and indexes them for search and retrieval.
         """
         try:
             self.logger.info(
-                "Creating an instance of SemanticChunking class to perform operations related to semantic chunking"
+                "Creating an instance of ChapterIngestionPipeline to orchestrate chapter generation"
             )
-            semantic_chunker = SemanticChunking(
+            chapter_pipeline = ChapterIngestionPipeline(
                 hash_id=context.hash_id,
                 index_name=self.index_name,
                 transcript=context.transcript,
@@ -601,16 +601,16 @@ class IngestionPipeline:
                 parent_duration=context.parent_duration,
                 video_duration=context.video_duration,
             )
-            self.logger.info("Successfully created an instance of SemanticChunking class!")
+            self.logger.info("Successfully created an instance of ChapterIngestionPipeline!")
 
             context.chapter_responses, context.chapter_transcripts, context.is_already_ingested = (
-                await semantic_chunker.run(url=url)
+                await chapter_pipeline.run(url=url)
             )
 
             return context
         except Exception as e:
             self.logger.exception(
-                f"Exception occured while creating an instance of SemanticChunking class: {e}"
+                f"Exception occured while creating an instance of ChapterIngestionPipeline: {e}"
             )
             raise
 
