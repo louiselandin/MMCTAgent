@@ -400,10 +400,11 @@ class IngestionPipeline:
             keyframe_config = KeyframeExtractionConfig(
                 motion_threshold=self.keyframe_config["motion_threshold"],
                 sample_fps=self.keyframe_config["sample_fps"],
+                index_name=self.index_name,
+                search_endpoint=self.search_endpoint,
             )
             keyframe_processor = KeyframeProcessor(
                 keyframe_config=keyframe_config,
-                keyframe_search_index=self.keyframe_search_index,
             )
             await keyframe_processor.process_keyframes(
                 video_path=video_path,
@@ -413,6 +414,9 @@ class IngestionPipeline:
                 video_duration=part_duration,
             )
             self.logger.info(f"Keyframe processing completed for part {part_hash_id}")
+
+            # Close keyframe processor resources
+            await keyframe_processor.close()
 
             # Queue keyframes for upload to blob storage
             await self._queue_keyframe_uploads(context, blob_manager)
@@ -652,20 +656,23 @@ class IngestionPipeline:
         """
         try:
             # Get Azure Search endpoint
-            search_endpoint = os.getenv("SEARCH_ENDPOINT")
-            if not search_endpoint:
+            self.search_endpoint = os.getenv("SEARCH_ENDPOINT")
+            if not self.search_endpoint:
                 self.logger.error("SEARCH_ENDPOINT environment variable not set")
-                return
+                raise ValueError("SEARCH_ENDPOINT environment variable not set")
 
             # Create keyframe search index instance
             keyframe_index_name = f"keyframes-{self.index_name}"
-            self.keyframe_search_index = KeyframeSearchIndex(
-                search_endpoint=search_endpoint, index_name=keyframe_index_name
+            keyframe_search_index = KeyframeSearchIndex(
+                search_endpoint=self.search_endpoint, index_name=keyframe_index_name
             )
 
             # Create the index if it doesn't exist
-            await self.keyframe_search_index.create_keyframe_index_if_not_exists()
+            await keyframe_search_index.create_keyframe_index_if_not_exists()
             self.logger.info(f"Keyframe search index initialized: {keyframe_index_name}")
+
+            # Close this temporary client - each KeyframeProcessor will create its own
+            await keyframe_search_index.close()
 
         except Exception as e:
             self.logger.exception(
@@ -765,21 +772,9 @@ class IngestionPipeline:
 
             self.logger.info("Local files cleaned up successfully!")
 
-            # Cleanup keyframe search index
-            if self.keyframe_search_index:
-                await self.keyframe_search_index.close()
-                self.logger.info("Keyframe search index closed successfully!")
-
             self.logger.info("Ingestion pipeline ran successfully!")
 
         except Exception as e:
-            # Cleanup keyframe search index in case of exception
-            if self.keyframe_search_index:
-                try:
-                    await self.keyframe_search_index.close()
-                except:
-                    pass  # Ignore cleanup errors during exception handling
-
             self.logger.exception(f"Exception occurred while running Ingestion pipeline: {e}")
             raise
 

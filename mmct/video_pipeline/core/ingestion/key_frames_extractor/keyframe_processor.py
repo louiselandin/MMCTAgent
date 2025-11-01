@@ -5,6 +5,7 @@ Combines keyframe extraction, embedding generation, and search index storage
 into a single, clean interface.
 """
 
+import os
 from loguru import logger
 
 from mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_extractor import (
@@ -31,17 +32,34 @@ class KeyframeProcessor:
     def __init__(
         self,
         keyframe_config: KeyframeExtractionConfig,
-        keyframe_search_index: KeyframeSearchIndex,
     ):
         """
         Initialize the keyframe processor.
 
         Args:
-            keyframe_config: Configuration for keyframe extraction
-            keyframe_search_index: Search index instance for storing embeddings
+            keyframe_config: Configuration for keyframe extraction (including index_name and search_endpoint)
         """
         self.keyframe_config = keyframe_config
-        self.keyframe_search_index = keyframe_search_index
+        self.keyframe_search_index = None
+
+    async def _initialize_search_index(self):
+        """
+        Initialize the keyframe search index client if not already initialized.
+        Creates a client connection to the existing index (index creation happens in ingestion_pipeline).
+        """
+        if self.keyframe_search_index is None:
+            if not self.keyframe_config.index_name or not self.keyframe_config.search_endpoint:
+                raise ValueError(
+                    "index_name and search_endpoint must be provided in keyframe_config"
+                )
+
+            # Create keyframe search index client instance
+            keyframe_index_name = f"keyframes-{self.keyframe_config.index_name}"
+            self.keyframe_search_index = KeyframeSearchIndex(
+                search_endpoint=self.keyframe_config.search_endpoint,
+                index_name=keyframe_index_name,
+            )
+            logger.info(f"Keyframe search index client initialized: {keyframe_index_name}")
 
     async def process_keyframes(
         self,
@@ -62,6 +80,9 @@ class KeyframeProcessor:
             video_duration: Duration of this video part in seconds
         """
         try:
+            # Initialize search index if not already done
+            await self._initialize_search_index()
+
             # Step 1: Extract keyframes
             logger.info(f"Extracting keyframes for video {video_hash_id}...")
             keyframe_extractor = KeyframeExtractor(self.keyframe_config)
@@ -103,3 +124,9 @@ class KeyframeProcessor:
         except Exception as e:
             logger.exception(f"Exception occurred during keyframe processing: {e}")
             raise
+
+    async def close(self):
+        """Close the keyframe search index connection."""
+        if self.keyframe_search_index:
+            await self.keyframe_search_index.close()
+            logger.info("Keyframe search index closed successfully")
