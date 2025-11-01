@@ -125,7 +125,7 @@ class IngestionPipeline:
     >>>         transcription_service=TranscriptionServices.AZURE_STT",
     >>>         url=None
     >>>     )
-    >>>     await ingestion()
+    >>>     await ingestion.run()
     >>>
     >>> asyncio.run(run_ingestion())
 
@@ -673,7 +673,7 @@ class IngestionPipeline:
             )
             raise
 
-    async def __call__(self):
+    async def run(self):
         """Main ingestion pipeline method - now supports video splitting and parallel processing."""
         try:
             # Initialize keyframe search index
@@ -801,4 +801,4 @@ if __name__ == "__main__":
         # transcript_path=transcript_path,
         keyframe_config=keyframe_config,
     )
-    asyncio.run(ingestion())
+    asyncio.run(ingestion.run())
