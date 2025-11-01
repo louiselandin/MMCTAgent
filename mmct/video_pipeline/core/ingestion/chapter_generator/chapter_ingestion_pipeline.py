@@ -7,7 +7,6 @@ It coordinates semantic chunking, chapter generation, and search index ingestion
 
 import uuid
 import asyncio
-import os
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from loguru import logger
@@ -75,10 +74,6 @@ class ChapterIngestionPipeline:
         self.embedding_provider = provider_factory.create_embedding_provider()
 
         # Create search provider with custom index_name for this pipeline
-        search_endpoint = os.getenv("SEARCH_ENDPOINT")
-        if not search_endpoint:
-            raise ValueError("SEARCH_ENDPOINT environment variable not set")
-
         self.search_provider = provider_factory.create_search_provider()
         # Update the search provider's client to use our specific index_name
         # The provider was created with default config, but we need a specific index

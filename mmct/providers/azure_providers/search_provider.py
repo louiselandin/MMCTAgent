@@ -23,11 +23,11 @@ class AzureSearchProvider(SearchProvider):
         """Initialize Azure AI Search client."""
         try:
             endpoint = self.config.get("endpoint")
+            if not endpoint:
+                raise ConfigurationException("SEARCH_ENDPOINT environment variable not set")
+
             index_name = self.config.get("index_name", "default")
             use_managed_identity = self.config.get("use_managed_identity", True)
-            
-            if not endpoint:
-                raise ConfigurationException("Azure AI Search endpoint is required")
             
             if use_managed_identity:
                 return SearchClient(
