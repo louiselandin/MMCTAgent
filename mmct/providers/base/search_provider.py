@@ -26,7 +26,9 @@ class SearchProvider(ABC):
 
         Args:
             index_name: Name of the index to create
-            index_schema: Provider-specific index schema definition
+            index_schema: Provider-specific index schema definition.
+                For simple cases, can be a string indicating index type: "chapter" or "keyframe"
+                For complex cases, can be provider-specific schema object
 
         Returns:
             bool: True if created, False if already exists

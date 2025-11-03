@@ -27,6 +27,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 mmct_faiss_indices/
+mmct/tests/results/
 local_storage/
 *.mp4
 # PyInstaller
@@ -195,3 +196,4 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+.github/copilot-instructions.md
