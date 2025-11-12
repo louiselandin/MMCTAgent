@@ -367,8 +367,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Discussions](https://github.com/microsoft/MMCTAgent/discussions)
 ---
 
-<div align="center">
-  <strong>Made with ❤️ by the MMCTAgent Team</strong>
-  <br>
-  <a href="https://github.com/microsoft/MMCTAgent">⭐ Star us on GitHub</a>
-</div>
+
