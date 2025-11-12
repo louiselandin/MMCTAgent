@@ -32,7 +32,6 @@ For EgoSchema video Dataset:
 |----------------|--------|-------------------|
 | VideoMME       | 72.10  | 76.70             |
 
-*Note: We are working on inclusion of LV-Bench dataset for analysis of long form videos*
 
 
 
