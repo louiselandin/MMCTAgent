@@ -66,7 +66,7 @@ class SearchConfig(BaseSettings):
     provider: str = Field(default="azure_ai_search", env="SEARCH_PROVIDER")
     endpoint: Optional[str] = Field(default=None, env="SEARCH_ENDPOINT")
     api_key: Optional[str] = Field(default=None, env="SEARCH_API_KEY")
-    use_managed_identity: bool = Field(default=True, env="SEARCH_USE_MANAGED_IDENTITY")
+    use_managed_identity: bool = Field(default=False, env="SEARCH_USE_MANAGED_IDENTITY")
     index_name: str = Field(default="default", env="SEARCH_INDEX_NAME")
     timeout: int = Field(default=30, env="SEARCH_TIMEOUT")
 
@@ -88,7 +88,7 @@ class SearchConfig(BaseSettings):
                 'provider': os.getenv("SEARCH_PROVIDER", "azure_ai_search"),
                 'endpoint': os.getenv("SEARCH_ENDPOINT"),
                 'api_key': os.getenv("SEARCH_API_KEY"),
-                'use_managed_identity': os.getenv("SEARCH_USE_MANAGED_IDENTITY", "true").lower() == "true",
+                'use_managed_identity': os.getenv("SEARCH_USE_MANAGED_IDENTITY", "false").lower() == "false",
                 'index_name': os.getenv("SEARCH_INDEX_NAME", "default"),
                 'timeout': int(os.getenv("SEARCH_TIMEOUT", "30")),
             }

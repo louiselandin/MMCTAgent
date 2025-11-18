@@ -28,7 +28,7 @@ EMBEDDING_SERVICE_ENDPOINT=https://<your-openai-endpoint>
 EMBEDDING_SERVICE_DEPLOYMENT_NAME=<embedding-deployment>
 SEARCH_PROVIDER=azure_ai_search
 SEARCH_ENDPOINT=https://<your-search-service>.search.windows.net
-SEARCH_USE_MANAGED_IDENTITY=true
+SEARCH_USE_MANAGED_IDENTITY=false
 ```
 
 Example .env for local FAISS search (no Azure)

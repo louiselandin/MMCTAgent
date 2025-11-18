@@ -120,7 +120,7 @@ else
         EMBEDDING_SERVICE_MODEL_NAME="text-embedding-ada-002" \
         EMBEDDING_SERVICE_API_KEY="" \
         SEARCH_PROVIDER="azure_ai_search" \
-        SEARCH_USE_MANAGED_IDENTITY="true" \
+        SEARCH_USE_MANAGED_IDENTITY="false" \
         SEARCH_INDEX_NAME="default" \
         SEARCH_TIMEOUT="30" \
         SEARCH_ENDPOINT="https://$aiSearchServiceName.search.windows.net" \

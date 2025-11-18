@@ -66,7 +66,7 @@ fi
 # ---------------- Search Provider Configuration ----------------
 write_comment_in_env "Search Provider Configuration"
 write_env "SEARCH_PROVIDER" "azure_ai_search"
-write_env "SEARCH_USE_MANAGED_IDENTITY" "true"
+write_env "SEARCH_USE_MANAGED_IDENTITY" "false"
 write_env "SEARCH_INDEX_NAME" "default"
 write_env "SEARCH_TIMEOUT" "30"
 

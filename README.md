@@ -283,18 +283,18 @@ LLM_PROVIDER=azure
 LLM_ENDPOINT=https://your-resource.openai.azure.com/
 LLM_DEPLOYMENT_NAME=gpt-4o
 LLM_MODEL_NAME=gpt-4o
-LLM_USE_MANAGED_IDENTITY=true
+LLM_USE_MANAGED_IDENTITY=false
 
 # Search Configuration
 SEARCH_PROVIDER=azure_ai_search # use `local_faiss` to enable faiss index as vector db
 SEARCH_ENDPOINT=https://your-search.search.windows.net
-SEARCH_USE_MANAGED_IDENTITY=true
+SEARCH_USE_MANAGED_IDENTITY=false
 SEARCH_INDEX_NAME=your-index-name
 
 # Storage Configuration
 STORAGE_PROVIDER=azure # use `local` to store items to local storage
 STORAGE_ACCOUNT_NAME=your-storage-account
-STORAGE_USE_MANAGED_IDENTITY=true
+STORAGE_USE_MANAGED_IDENTITY=false
 ```
 
 📖 **For comprehensive configuration options, see our [Provider Configuration Guide](docs/PROVIDERS_GUIDE.md)**

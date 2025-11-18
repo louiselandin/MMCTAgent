@@ -28,7 +28,7 @@ providers:
     azure_ai_search:
       endpoint: "${SEARCH_ENDPOINT}"
       api_key: "${SEARCH_API_KEY}"
-      use_managed_identity: "${SEARCH_USE_MANAGED_IDENTITY:true}"
+      use_managed_identity: "false"
       index_name: "${SEARCH_INDEX_NAME:default}"
       timeout: "${SEARCH_TIMEOUT:30}"
     
