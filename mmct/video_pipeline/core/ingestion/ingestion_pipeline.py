@@ -405,6 +405,7 @@ class IngestionPipeline:
             )
             keyframe_processor = KeyframeProcessor(
                 keyframe_config=keyframe_config,
+                enable_vision_descriptions=True,  # Enable GPT-4o Vision descriptions
             )
             await keyframe_processor.process_keyframes(
                 video_path=video_path,

@@ -30,7 +30,18 @@ class AzureSearchProvider(SearchProvider):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.credential = AzureCredentials.get_async_credentials()
+        self.use_managed_identity = self.config.get("use_managed_identity", True)
+        
+        # Initialize credential based on configuration
+        if self.use_managed_identity:
+            self.credential = AzureCredentials.get_async_credentials()
+        else:
+            api_key = self.config.get("api_key")
+            if not api_key:
+                raise ConfigurationException("Azure AI Search API key is required when managed identity is disabled")
+            from azure.core.credentials import AzureKeyCredential
+            self.credential = AzureKeyCredential(api_key)
+        
         self.index_client = self._initialize_index_client()
         # Cache for search clients with different index names
         self._client_cache: Dict[str, SearchClient] = {}
@@ -52,25 +63,11 @@ class AzureSearchProvider(SearchProvider):
             if not endpoint:
                 raise ConfigurationException("SEARCH_ENDPOINT environment variable not set")
 
-            use_managed_identity = self.config.get("use_managed_identity", True)
-            
-            if use_managed_identity:
-                return SearchClient(
-                    endpoint=endpoint,
-                    index_name=index_name,
-                    credential=self.credential
-                )
-            else:
-                api_key = self.config.get("api_key")
-                if not api_key:
-                    raise ConfigurationException("Azure AI Search API key is required when managed identity is disabled")
-                
-                from azure.core.credentials import AzureKeyCredential
-                return SearchClient(
-                    endpoint=endpoint,
-                    index_name=index_name,
-                    credential=AzureKeyCredential(api_key)
-                )
+            return SearchClient(
+                endpoint=endpoint,
+                index_name=index_name,
+                credential=self.credential
+            )
         except Exception as e:
             raise ProviderException(f"Failed to initialize Azure AI Search client: {e}")
 
@@ -273,6 +270,8 @@ class AzureSearchProvider(SearchProvider):
             SimpleField(name="parent_id", type=SearchFieldDataType.String, filterable=True),
             SimpleField(name="parent_duration", type=SearchFieldDataType.Double, filterable=True, sortable=True),
             SimpleField(name="video_duration", type=SearchFieldDataType.Double, filterable=True, sortable=True),
+            # vision description field
+            SearchableField(name="vision_description", type=SearchFieldDataType.String, filterable=False),
         ]
 
         vector_search = VectorSearch(

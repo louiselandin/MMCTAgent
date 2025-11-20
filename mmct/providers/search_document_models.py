@@ -375,6 +375,19 @@ class KeyframeDocument(BaseModel):
         facetable=False,
         key=False
     )
+    
+    # — Vision description field —
+    vision_description: str = Field(
+        default="",
+        description="GPT-4o Vision description of frame content",
+        searchable=True,
+        filterable=False,
+        retrievable=True,
+        stored=True,
+        sortable=False,
+        facetable=False,
+        key=False
+    )
 
     # — Vector embedding field —
     embeddings: List[float] = Field(

@@ -1,0 +1,250 @@
+2025-11-18 15:51:44.108 | INFO     | mmct.video_pipeline.core.tools.get_context:<module>:14 - Instantiating the embedding and search providers
+2025-11-18 15:51:44.141 | INFO     | mmct.providers.factory:create_search_provider:152 - Creating search provider: azure_ai_search
+2025-11-18 15:51:44.172 | INFO     | mmct.providers.factory:create_embedding_provider:124 - Creating embedding provider: azure
+2025-11-18 15:51:44.193 | INFO     | mmct.video_pipeline.core.tools.get_context:<module>:17 - Successfully instantiated the search and embedding providers
+2025-11-18 15:51:44.212 | INFO     | mmct.providers.factory:create_llm_provider:96 - Creating LLM provider: azure
+2025-11-18 15:51:44.237 | INFO     | mmct.providers.factory:create_storage_provider:252 - Creating storage provider: local
+2025-11-18 15:51:44.237 | INFO     | mmct.providers.custom_providers.storage_provider:__init__:28 - LocalStorageProvider initialized at /workspaces/MMCTAgent/local_storage
+2025-11-18 15:51:44.267 | INFO     | mmct.providers.factory:create_llm_provider:96 - Creating LLM provider: azure
+2025-11-18 15:51:44.570 | INFO     | mmct.providers.factory:create_embedding_provider:124 - Creating embedding provider: azure
+================================================================================
+🎬 ENHANCED VIDEO ANALYSIS WITH GPT-4o VISION
+================================================================================
+📹 Video: ambulance_5_sek.mp4
+📊 Index: test-index-vision
+🔍 Vision: Enabled (GPT-4o will describe each frame)
+================================================================================
+
+🔄 Step 1: Video Ingestion with Vision Descriptions
+--------------------------------------------------------------------------------
+⏳ Processing video...
+   - Extracting keyframes
+   - Generating CLIP embeddings
+   - Describing frames with GPT-4o Vision
+   - Storing in search index
+
+[32m2025-11-18 15:51:44.636[0m | [1mINFO    [0m | [36mmmct.providers.factory[0m:[36mcreate_search_provider[0m:[36m152[0m - [1mCreating search provider: azure_ai_search[0m
+[32m2025-11-18 15:51:45.331[0m | [1mINFO    [0m | [36mmmct.providers.azure_providers.search_provider[0m:[36mcreate_index[0m:[36m445[0m - [1mSuccessfully created index 'keyframes-test-index-vision'[0m
+[32m2025-11-18 15:51:45.331[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_initialize_keyframe_search_index[0m:[36m672[0m - [1mKeyframe search index initialized: keyframes-test-index-vision[0m
+[32m2025-11-18 15:51:45.331[0m | [1mINFO    [0m | [36mmmct.providers.azure_providers.search_provider[0m:[36mclose[0m:[36m572[0m - [1mClosing Azure AI Search Index client[0m
+[32m2025-11-18 15:51:45.332[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_perform_early_ingestion_check[0m:[36m276[0m - [1mPerforming early ingestion check...[0m
+[32m2025-11-18 15:51:45.578[0m | [1mINFO    [0m | [36mmmct.video_pipeline.utils.helper[0m:[36mget_file_hash[0m:[36m361[0m - [1mHash Id Generated: e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba[0m
+[32m2025-11-18 15:51:45.596[0m | [1mINFO    [0m | [36mmmct.providers.factory[0m:[36mcreate_search_provider[0m:[36m152[0m - [1mCreating search provider: azure_ai_search[0m
+[32m2025-11-18 15:51:45.652[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.utils.helper[0m:[36mcheck_video_already_ingested[0m:[36m271[0m - [1mIndex 'test-index-vision' does not exist yet, skipping duplicate check[0m
+[32m2025-11-18 15:51:45.652[0m | [1mINFO    [0m | [36mmmct.providers.azure_providers.search_provider[0m:[36mclose[0m:[36m572[0m - [1mClosing Azure AI Search Index client[0m
+[32m2025-11-18 15:51:45.653[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_perform_early_ingestion_check[0m:[36m293[0m - [1mVideo not found in index. Proceeding with full ingestion pipeline...[0m
+[32m2025-11-18 15:51:45.653[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m696[0m - [1mValidating video has audio stream...[0m
+[32m2025-11-18 15:51:45.829[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m707[0m - [1mVideo has audio stream - proceeding with transcription[0m
+[32m2025-11-18 15:51:46.109[0m | [1mINFO    [0m | [36mmmct.video_pipeline.utils.helper[0m:[36mget_file_hash[0m:[36m361[0m - [1mHash Id Generated: e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba[0m
+[32m2025-11-18 15:51:46.254[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.utils.helper[0m:[36mget_video_duration[0m:[36m33[0m - [1mVideo duration: 5.23 seconds (0.09 minutes)[0m
+[32m2025-11-18 15:51:46.255[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m712[0m - [1mParent video ID: e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba, Duration: 5.23s[0m
+[32m2025-11-18 15:51:46.385[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.utils.helper[0m:[36mget_video_duration[0m:[36m33[0m - [1mVideo duration: 5.23 seconds (0.09 minutes)[0m
+[32m2025-11-18 15:51:46.385[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.utils.helper[0m:[36msplit_video_if_needed[0m:[36m64[0m - [1mVideo duration is less than 30 minutes, no splitting needed[0m
+[32m2025-11-18 15:51:46.385[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m718[0m - [1mProcessing 1 video part(s)[0m
+[32m2025-11-18 15:51:46.385[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m737[0m - [1mCreating task for Part A: ambulance_5_sek.mp4[0m
+[32m2025-11-18 15:51:46.385[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m738[0m - [1m  Hash ID: e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba[0m
+[32m2025-11-18 15:51:46.386[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m755[0m - [1mStarting single processing of 1 video part(s)...[0m
+[32m2025-11-18 15:51:46.386[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_process_single_video_part[0m:[36m371[0m - [1mStarting processing of video part: ambulance_5_sek.mp4[0m
+[32m2025-11-18 15:51:46.386[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_process_single_video_part[0m:[36m372[0m - [1mPart Hash ID: e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba[0m
+[32m2025-11-18 15:51:46.386[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_check_and_compress_video[0m:[36m227[0m - [1mVideo file size for ambulance_5_sek.mp4: 12.99 MB[0m
+[32m2025-11-18 15:51:46.386[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_check_and_compress_video[0m:[36m260[0m - [1mVideo file size is within acceptable limits, no compression needed[0m
+[32m2025-11-18 15:51:46.536[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.utils.helper[0m:[36mget_video_duration[0m:[36m33[0m - [1mVideo duration: 5.23 seconds (0.09 minutes)[0m
+[32m2025-11-18 15:51:46.555[0m | [1mINFO    [0m | [36mmmct.providers.factory[0m:[36mcreate_storage_provider[0m:[36m252[0m - [1mCreating storage provider: local[0m
+[32m2025-11-18 15:51:46.556[0m | [1mINFO    [0m | [36mmmct.providers.custom_providers.storage_provider[0m:[36m__init__[0m:[36m28[0m - [1mLocalStorageProvider initialized at /workspaces/MMCTAgent/local_storage[0m
+[32m2025-11-18 15:51:46.584[0m | [1mINFO    [0m | [36mmmct.providers.factory[0m:[36mcreate_llm_provider[0m:[36m96[0m - [1mCreating LLM provider: azure[0m
+[32m2025-11-18 15:51:46.608[0m | [1mINFO    [0m | [36mmmct.providers.factory[0m:[36mcreate_search_provider[0m:[36m152[0m - [1mCreating search provider: azure_ai_search[0m
+[32m2025-11-18 15:51:46.609[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor[0m:[36m_initialize_search_index[0m:[36m69[0m - [1mKeyframe search index client initialized: keyframes-test-index-vision[0m
+[32m2025-11-18 15:51:46.609[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor[0m:[36mprocess_keyframes[0m:[36m145[0m - [1mExtracting keyframes for video e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba...[0m
+[32m2025-11-18 15:51:47.634[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor[0m:[36mprocess_keyframes[0m:[36m150[0m - [1mSuccessfully extracted 6 keyframes[0m
+[32m2025-11-18 15:51:47.634[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor[0m:[36mprocess_keyframes[0m:[36m153[0m - [1mGenerating embeddings for 6 keyframes...[0m
+[32m2025-11-18 15:51:47.641[0m | [1mINFO    [0m | [36mmmct.providers.custom_providers.image_embedding_provider[0m:[36m_initialize_model[0m:[36m55[0m - [1mInitializing CLIP model openai/clip-vit-base-patch32 on cpu[0m
+[32m2025-11-18 15:51:50.012[0m | [1mINFO    [0m | [36mmmct.providers.custom_providers.image_embedding_provider[0m:[36m_initialize_model[0m:[36m65[0m - [1mCLIP model initialized successfully[0m
+[32m2025-11-18 15:51:50.430[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor[0m:[36mprocess_keyframes[0m:[36m161[0m - [1mSuccessfully generated 6 frame embeddings[0m
+[32m2025-11-18 15:51:50.440[0m | [1mINFO    [0m | [36mmmct.providers.custom_providers.image_embedding_provider[0m:[36mclose[0m:[36m296[0m - [1mCLIP embedding provider cleaned up successfully[0m
+[32m2025-11-18 15:51:50.440[0m | [1mINFO    [0m | [36mmmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor[0m:[36m_generate_vision_descriptions[0m:[36m89[0m - [1mGenerating vision descriptions for 6 keyframes...[0m
+[32m2025-11-18 15:51:50.440[0m | [31m[1mERROR   [0m | [36mmmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor[0m:[36mprocess_keyframes[0m:[36m187[0m - [31m[1mException occurred during keyframe processing: 'FrameMetadata' object is not subscriptable[0m
+[33m[1mTraceback (most recent call last):[0m
+
+  File "[32m/workspaces/MMCTAgent/[0m[32m[1mapp_with_vision.py[0m", line [33m135[0m, in [35m<module>[0m
+    [1masyncio[0m[35m[1m.[0m[1mrun[0m[1m([0m[1manalyze_video_with_vision[0m[1m([0m[1m)[0m[1m)[0m
+    [36m│       │   └ [0m[36m[1m<function analyze_video_with_vision at 0xff5e5fbb76d0>[0m
+    [36m│       └ [0m[36m[1m<function run at 0xff5ee544fb50>[0m
+    [36m└ [0m[36m[1m<module 'asyncio' from '/usr/local/lib/python3.10/asyncio/__init__.py'>[0m
+
+  File "/usr/local/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+           │    │                  └ <coroutine object analyze_video_with_vision at 0xff5ee4597c30>
+           │    └ <function BaseEventLoop.run_until_complete at 0xff5ee45e6830>
+           └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 636, in run_until_complete
+    self.run_forever()
+    │    └ <function BaseEventLoop.run_forever at 0xff5ee45e67a0>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 603, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0xff5ee45ec310>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 1909, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0xff5ee4823c70>
+    └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+  File "/usr/local/lib/python3.10/asyncio/events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+
+  File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/[0m[32m[1mingestion_pipeline.py[0m", line [33m409[0m, in [35m_process_single_video_part[0m
+    [35m[1mawait[0m [1mkeyframe_processor[0m[35m[1m.[0m[1mprocess_keyframes[0m[1m([0m
+    [36m      │                  └ [0m[36m[1m<function KeyframeProcessor.process_keyframes at 0xff5e5fbcb400>[0m
+    [36m      └ [0m[36m[1m<mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor.KeyframeProcessor object at 0xff5e5e87ccd0>[0m
+
+> File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/[0m[32m[1mkeyframe_processor.py[0m", line [33m167[0m, in [35mprocess_keyframes[0m
+    [1mvision_descriptions[0m [35m[1m=[0m [35m[1mawait[0m [1mself[0m[35m[1m.[0m[1m_generate_vision_descriptions[0m[1m([0m[1mkeyframe_metadata[0m[1m,[0m [1mvideo_hash_id[0m[1m)[0m
+    [36m                            │    │                             │                  └ [0m[36m[1m'e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba'[0m
+    [36m                            │    │                             └ [0m[36m[1m[FrameMetadata(frame_number=0, timestamp_seconds=0.0, motion_score=0.0), FrameMetadata(frame_number=45, timestamp_seconds=1.5...[0m
+    [36m                            │    └ [0m[36m[1m<function KeyframeProcessor._generate_vision_descriptions at 0xff5e5fbcb2e0>[0m
+    [36m                            └ [0m[36m[1m<mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor.KeyframeProcessor object at 0xff5e5e87ccd0>[0m
+
+  File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/[0m[32m[1mkeyframe_processor.py[0m", line [33m100[0m, in [35m_generate_vision_descriptions[0m
+    [1mframe_number[0m [35m[1m=[0m [1mframe_meta[0m[1m[[0m[36m'frame_number'[0m[1m][0m
+    [36m               └ [0m[36m[1mFrameMetadata(frame_number=0, timestamp_seconds=0.0, motion_score=0.0)[0m
+
+[31m[1mTypeError[0m:[1m 'FrameMetadata' object is not subscriptable[0m
+[32m2025-11-18 15:51:50.442[0m | [31m[1mERROR   [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36m_process_single_video_part[0m:[36m505[0m - [31m[1mException occurred while processing video part e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba: 'FrameMetadata' object is not subscriptable[0m
+[33m[1mTraceback (most recent call last):[0m
+
+  File "[32m/workspaces/MMCTAgent/[0m[32m[1mapp_with_vision.py[0m", line [33m135[0m, in [35m<module>[0m
+    [1masyncio[0m[35m[1m.[0m[1mrun[0m[1m([0m[1manalyze_video_with_vision[0m[1m([0m[1m)[0m[1m)[0m
+    [36m│       │   └ [0m[36m[1m<function analyze_video_with_vision at 0xff5e5fbb76d0>[0m
+    [36m│       └ [0m[36m[1m<function run at 0xff5ee544fb50>[0m
+    [36m└ [0m[36m[1m<module 'asyncio' from '/usr/local/lib/python3.10/asyncio/__init__.py'>[0m
+
+  File "/usr/local/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+           │    │                  └ <coroutine object analyze_video_with_vision at 0xff5ee4597c30>
+           │    └ <function BaseEventLoop.run_until_complete at 0xff5ee45e6830>
+           └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 636, in run_until_complete
+    self.run_forever()
+    │    └ <function BaseEventLoop.run_forever at 0xff5ee45e67a0>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 603, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0xff5ee45ec310>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 1909, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0xff5ee4823c70>
+    └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+  File "/usr/local/lib/python3.10/asyncio/events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle Task.task_wakeup(<Future finis...type=float32)>)>
+
+> File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/[0m[32m[1mingestion_pipeline.py[0m", line [33m409[0m, in [35m_process_single_video_part[0m
+    [35m[1mawait[0m [1mkeyframe_processor[0m[35m[1m.[0m[1mprocess_keyframes[0m[1m([0m
+    [36m      │                  └ [0m[36m[1m<function KeyframeProcessor.process_keyframes at 0xff5e5fbcb400>[0m
+    [36m      └ [0m[36m[1m<mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor.KeyframeProcessor object at 0xff5e5e87ccd0>[0m
+
+  File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/[0m[32m[1mkeyframe_processor.py[0m", line [33m167[0m, in [35mprocess_keyframes[0m
+    [1mvision_descriptions[0m [35m[1m=[0m [35m[1mawait[0m [1mself[0m[35m[1m.[0m[1m_generate_vision_descriptions[0m[1m([0m[1mkeyframe_metadata[0m[1m,[0m [1mvideo_hash_id[0m[1m)[0m
+    [36m                            │    │                             │                  └ [0m[36m[1m'e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba'[0m
+    [36m                            │    │                             └ [0m[36m[1m[FrameMetadata(frame_number=0, timestamp_seconds=0.0, motion_score=0.0), FrameMetadata(frame_number=45, timestamp_seconds=1.5...[0m
+    [36m                            │    └ [0m[36m[1m<function KeyframeProcessor._generate_vision_descriptions at 0xff5e5fbcb2e0>[0m
+    [36m                            └ [0m[36m[1m<mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor.KeyframeProcessor object at 0xff5e5e87ccd0>[0m
+
+  File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/[0m[32m[1mkeyframe_processor.py[0m", line [33m100[0m, in [35m_generate_vision_descriptions[0m
+    [1mframe_number[0m [35m[1m=[0m [1mframe_meta[0m[1m[[0m[36m'frame_number'[0m[1m][0m
+    [36m               └ [0m[36m[1mFrameMetadata(frame_number=0, timestamp_seconds=0.0, motion_score=0.0)[0m
+
+[31m[1mTypeError[0m:[1m 'FrameMetadata' object is not subscriptable[0m
+[32m2025-11-18 15:51:50.443[0m | [31m[1mERROR   [0m | [36mmmct.video_pipeline.core.ingestion.ingestion_pipeline[0m:[36mrun[0m:[36m778[0m - [31m[1mException occurred while running Ingestion pipeline: 'FrameMetadata' object is not subscriptable[0m
+[33m[1mTraceback (most recent call last):[0m
+
+  File "[32m/workspaces/MMCTAgent/[0m[32m[1mapp_with_vision.py[0m", line [33m135[0m, in [35m<module>[0m
+    [1masyncio[0m[35m[1m.[0m[1mrun[0m[1m([0m[1manalyze_video_with_vision[0m[1m([0m[1m)[0m[1m)[0m
+    [36m│       │   └ [0m[36m[1m<function analyze_video_with_vision at 0xff5e5fbb76d0>[0m
+    [36m│       └ [0m[36m[1m<function run at 0xff5ee544fb50>[0m
+    [36m└ [0m[36m[1m<module 'asyncio' from '/usr/local/lib/python3.10/asyncio/__init__.py'>[0m
+
+  File "/usr/local/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+           │    │                  └ <coroutine object analyze_video_with_vision at 0xff5ee4597c30>
+           │    └ <function BaseEventLoop.run_until_complete at 0xff5ee45e6830>
+           └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 636, in run_until_complete
+    self.run_forever()
+    │    └ <function BaseEventLoop.run_forever at 0xff5ee45e67a0>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 603, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0xff5ee45ec310>
+    └ <_UnixSelectorEventLoop running=True closed=False debug=False>
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 1909, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0xff5ee4823c70>
+    └ <Handle Task.task_wakeup(<_GatheringFu...bscriptable")>)>
+  File "/usr/local/lib/python3.10/asyncio/events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle Task.task_wakeup(<_GatheringFu...bscriptable")>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle Task.task_wakeup(<_GatheringFu...bscriptable")>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle Task.task_wakeup(<_GatheringFu...bscriptable")>)>
+
+  File "[32m/workspaces/MMCTAgent/[0m[32m[1mapp_with_vision.py[0m", line [33m53[0m, in [35manalyze_video_with_vision[0m
+    [35m[1mawait[0m [1mingestion[0m[35m[1m.[0m[1mrun[0m[1m([0m[1m)[0m
+    [36m      │         └ [0m[36m[1m<function IngestionPipeline.run at 0xff5e5ea6e290>[0m
+    [36m      └ [0m[36m[1m<mmct.video_pipeline.core.ingestion.ingestion_pipeline.IngestionPipeline object at 0xff5e5e87f580>[0m
+
+> File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/[0m[32m[1mingestion_pipeline.py[0m", line [33m758[0m, in [35mrun[0m
+    [35m[1mawait[0m [1masyncio[0m[35m[1m.[0m[1mgather[0m[1m([0m[35m[1m*[0m[1mtasks[0m[1m)[0m
+    [36m      │       │       └ [0m[36m[1m[<Task finished name='Task-11' coro=<IngestionPipeline._process_single_video_part() done, defined at /workspaces/MMCTAgent/mm...[0m
+    [36m      │       └ [0m[36m[1m<function gather at 0xff5ee45c9c60>[0m
+    [36m      └ [0m[36m[1m<module 'asyncio' from '/usr/local/lib/python3.10/asyncio/__init__.py'>[0m
+
+  File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/[0m[32m[1mingestion_pipeline.py[0m", line [33m409[0m, in [35m_process_single_video_part[0m
+    [35m[1mawait[0m [1mkeyframe_processor[0m[35m[1m.[0m[1mprocess_keyframes[0m[1m([0m
+    [36m      │                  └ [0m[36m[1m<function KeyframeProcessor.process_keyframes at 0xff5e5fbcb400>[0m
+    [36m      └ [0m[36m[1m<mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor.KeyframeProcessor object at 0xff5e5e87ccd0>[0m
+
+  File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/[0m[32m[1mkeyframe_processor.py[0m", line [33m167[0m, in [35mprocess_keyframes[0m
+    [1mvision_descriptions[0m [35m[1m=[0m [35m[1mawait[0m [1mself[0m[35m[1m.[0m[1m_generate_vision_descriptions[0m[1m([0m[1mkeyframe_metadata[0m[1m,[0m [1mvideo_hash_id[0m[1m)[0m
+    [36m                            │    │                             │                  └ [0m[36m[1m'e604e1b921682ee7e764ed9227ff1a4d24303eb2d3b86ecce960bde04421f4ba'[0m
+    [36m                            │    │                             └ [0m[36m[1m[FrameMetadata(frame_number=0, timestamp_seconds=0.0, motion_score=0.0), FrameMetadata(frame_number=45, timestamp_seconds=1.5...[0m
+    [36m                            │    └ [0m[36m[1m<function KeyframeProcessor._generate_vision_descriptions at 0xff5e5fbcb2e0>[0m
+    [36m                            └ [0m[36m[1m<mmct.video_pipeline.core.ingestion.key_frames_extractor.keyframe_processor.KeyframeProcessor object at 0xff5e5e87ccd0>[0m
+
+  File "[32m/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/[0m[32m[1mkeyframe_processor.py[0m", line [33m100[0m, in [35m_generate_vision_descriptions[0m
+    [1mframe_number[0m [35m[1m=[0m [1mframe_meta[0m[1m[[0m[36m'frame_number'[0m[1m][0m
+    [36m               └ [0m[36m[1mFrameMetadata(frame_number=0, timestamp_seconds=0.0, motion_score=0.0)[0m
+
+[31m[1mTypeError[0m:[1m 'FrameMetadata' object is not subscriptable[0m
+Traceback (most recent call last):
+  File "/workspaces/MMCTAgent/app_with_vision.py", line 53, in analyze_video_with_vision
+    await ingestion.run()
+  File "/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/ingestion_pipeline.py", line 758, in run
+    await asyncio.gather(*tasks)
+  File "/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/ingestion_pipeline.py", line 409, in _process_single_video_part
+    await keyframe_processor.process_keyframes(
+  File "/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/keyframe_processor.py", line 167, in process_keyframes
+    vision_descriptions = await self._generate_vision_descriptions(keyframe_metadata, video_hash_id)
+  File "/workspaces/MMCTAgent/mmct/video_pipeline/core/ingestion/key_frames_extractor/keyframe_processor.py", line 100, in _generate_vision_descriptions
+    frame_number = frame_meta['frame_number']
+TypeError: 'FrameMetadata' object is not subscriptable
+
+❌ Error: 'FrameMetadata' object is not subscriptable
+
+💡 Troubleshooting:
+   - Check your .env file has all required API keys
+   - Ensure video file exists: ambulance_5_sek.mp4
+   - Verify Azure OpenAI has GPT-4o with vision enabled

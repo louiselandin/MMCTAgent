@@ -88,7 +88,7 @@ class SearchConfig(BaseSettings):
                 'provider': os.getenv("SEARCH_PROVIDER", "azure_ai_search"),
                 'endpoint': os.getenv("SEARCH_ENDPOINT"),
                 'api_key': os.getenv("SEARCH_API_KEY"),
-                'use_managed_identity': os.getenv("SEARCH_USE_MANAGED_IDENTITY", "false").lower() == "false",
+                'use_managed_identity': os.getenv("SEARCH_USE_MANAGED_IDENTITY", "false").lower() == "true",
                 'index_name': os.getenv("SEARCH_INDEX_NAME", "default"),
                 'timeout': int(os.getenv("SEARCH_TIMEOUT", "30")),
             }

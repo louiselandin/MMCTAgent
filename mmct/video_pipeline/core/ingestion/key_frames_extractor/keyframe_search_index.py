@@ -10,13 +10,14 @@ from mmct.video_pipeline.core.ingestion.key_frames_extractor.clip_embeddings imp
 logger = logging.getLogger(__name__)
 
 
-def create_frame_documents_from_embeddings(
-    frame_embeddings: List[FrameEmbedding],
+def _create_frame_documents(
+    frame_embeddings: List[Any],
     video_id: str,
     video_path: str,
-    parent_id: Optional[str] = None,
-    parent_duration: Optional[float] = None,
-    video_duration: Optional[float] = None
+    parent_id: str = None,
+    parent_duration: float = None,
+    video_duration: float = None,
+    vision_descriptions: Dict[int, str] = None,  # New parameter
 ) -> List[Dict[str, Any]]:
     """
     Create search documents from frame embeddings using KeyframeDocument model.
@@ -28,11 +29,13 @@ def create_frame_documents_from_embeddings(
         parent_id: Parent video ID (original video before splitting)
         parent_duration: Duration of parent video in seconds
         video_duration: Duration of this video part in seconds
+        vision_descriptions: Optional dict mapping frame_number to GPT-4o Vision description
 
     Returns:
         List of document dictionaries following KeyframeDocument schema
     """
     documents = []
+    vision_descriptions = vision_descriptions or {}
 
     for frame_embedding in frame_embeddings:
         # Generate unique ID for this frame
@@ -41,6 +44,9 @@ def create_frame_documents_from_embeddings(
 
         # Create frame filename
         frame_filename = f"{video_id}_{frame_embedding.frame_metadata.frame_number}.jpg"
+        
+        # Get vision description for this frame if available
+        vision_desc = vision_descriptions.get(frame_embedding.frame_metadata.frame_number, "")
 
         # Create document following KeyframeDocument schema
         document = {
@@ -54,7 +60,8 @@ def create_frame_documents_from_embeddings(
             "blob_url": "",  # Can be populated if needed
             "parent_id": parent_id if parent_id else video_id,
             "parent_duration": parent_duration if parent_duration is not None else 0.0,
-            "video_duration": video_duration if video_duration is not None else 0.0
+            "video_duration": video_duration if video_duration is not None else 0.0,
+            "vision_description": vision_desc,  # Add vision description
         }
 
         documents.append(document)
@@ -117,7 +124,8 @@ class KeyframeSearchIndex:
                                     video_id: str, video_path: str,
                                     parent_id: Optional[str] = None,
                                     parent_duration: Optional[float] = None,
-                                    video_duration: Optional[float] = None) -> bool:
+                                    video_duration: Optional[float] = None,
+                                    vision_descriptions: Dict[int, str] = None) -> bool:
         """
         Upload frame embeddings to the search index.
 
@@ -128,6 +136,7 @@ class KeyframeSearchIndex:
             parent_id: Parent video ID (original video before splitting)
             parent_duration: Duration of parent video in seconds
             video_duration: Duration of this video part in seconds
+            vision_descriptions: Optional dict mapping frame_number to GPT-4o Vision description
 
         Returns:
             bool: True if successful, False otherwise
@@ -145,8 +154,8 @@ class KeyframeSearchIndex:
                 # Continue with upload anyway - index might already exist
 
             # Create documents using KeyframeDocument model
-            documents = create_frame_documents_from_embeddings(
-                frame_embeddings, video_id, video_path, parent_id, parent_duration, video_duration
+            documents = _create_frame_documents(
+                frame_embeddings, video_id, video_path, parent_id, parent_duration, video_duration, vision_descriptions
             )
 
             # Upload in batches - provider handles field transformation
